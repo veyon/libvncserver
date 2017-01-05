@@ -69,6 +69,8 @@
 #include "minilzo.h"
 #include "tls.h"
 
+#include "ItalcRfbExt.h"
+
 #ifdef _MSC_VER
 #  define snprintf _snprintf /* MSVC went straight to the underscored syntax */
 #endif
@@ -158,6 +160,10 @@ static void FillRectangle(rfbClient* client, int x, int y, int w, int h, uint32_
       return;
   }
 
+  if (client->frameBuffer == NULL) {
+      return;
+  }
+
   if (!CheckRect(client, x, y, w, h)) {
     rfbClientLog("Rect out of bounds: %dx%d at (%d, %d)\n", x, y, w, h);
     return;
@@ -210,6 +216,10 @@ static void CopyRectangle(rfbClient* client, uint8_t* buffer, int x, int y, int 
 /* TODO: test */
 static void CopyRectangleFromRectangle(rfbClient* client, int src_x, int src_y, int w, int h, int dest_x, int dest_y) {
   int i,j;
+
+  if (client->frameBuffer == NULL) {
+      return;
+  }
 
   if (client->frameBuffer == NULL) {
       return;
@@ -616,8 +626,10 @@ ReadSupportedSecurityType(rfbClient* client, uint32_t *result, rfbBool subAuth)
         rfbClientLog("%d) Received security type %d\n", loop, tAuth[loop]);
         if (flag) continue;
         if (tAuth[loop]==rfbVncAuth || tAuth[loop]==rfbNoAuth ||
+			( tAuth[loop] == rfbUltraVNC_MsLogonIIAuth && isLogonAuthenticationEnabled( client ) ) ||
+			tAuth[loop] == rfbSecTypeItalc ||
 #if defined(LIBVNCSERVER_HAVE_GNUTLS) || defined(LIBVNCSERVER_HAVE_LIBSSL)
-            tAuth[loop]==rfbVeNCrypt ||
+			tAuth[loop]==rfbVeNCrypt ||
 #endif
             (tAuth[loop]==rfbARD && client->GetCredential) ||
             (!subAuth && (tAuth[loop]==rfbTLS || (tAuth[loop]==rfbVeNCrypt && client->GetCredential))))
@@ -1273,6 +1285,16 @@ InitialiseRFBConnection(rfbClient* client)
 
     break;
 
+  case rfbSecTypeItalc:
+    handleSecTypeItalc( client );
+    if (!rfbHandleAuthResult(client)) return FALSE;
+    break;
+
+  case rfbUltraVNC_MsLogonIIAuth:
+    handleMsLogonIIAuth( client );
+    if (!rfbHandleAuthResult(client)) return FALSE;
+    break;
+
   default:
     rfbClientLog("Unknown authentication scheme from VNC server: %d\n",
 	    (int)authScheme);
@@ -1751,7 +1773,7 @@ SendKeyEvent(rfbClient* client, uint32_t key, rfbBool down)
  */
 
 rfbBool
-SendClientCutText(rfbClient* client, char *str, int len)
+SendClientCutText(rfbClient* client, const char *str, int len)
 {
   rfbClientCutTextMsg cct;
 

@@ -38,6 +38,10 @@
 #ifdef WIN32
 #undef SOCKET
 #include <winsock2.h>
+/* make sure to use the WSA error codes instead of the POSIX ones defined in errno.h */
+#ifdef EWOULDBLOCK
+#undef EWOULDBLOCK
+#endif
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define close closesocket
 #define read(sock,buf,len) recv(sock,buf,len,0)
@@ -241,7 +245,7 @@ hexdump:
  */
 
 rfbBool
-WriteToRFBServer(rfbClient* client, char *buf, int n)
+WriteToRFBServer(rfbClient* client, const char *buf, int n)
 {
   fd_set fds;
   int i = 0;
@@ -338,7 +342,7 @@ ConnectClientToTcpAddr(unsigned int host, int port)
   }
 
   if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    rfbClientErr("ConnectToTcpAddr: connect\n");
+    /*rfbClientErr("ConnectToTcpAddr: connect\n");*/
     close(sock);
     return -1;
   }

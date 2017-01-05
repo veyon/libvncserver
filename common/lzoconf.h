@@ -1,3 +1,4 @@
+#include <lzo/lzoconf.h>
 /* lzoconf.h -- configuration of the LZO data compression library
 
    This file is part of the LZO real-time data compression library.

@@ -109,7 +109,13 @@ int deny_severity=LOG_WARNING;
 #pragma warning (disable: 4018 4761)
 #endif
 #define read(sock,buf,len) recv(sock,buf,len,0)
+#ifdef EWOULDBLOCK
+#undef EWOULDBLOCK
+#endif
 #define EWOULDBLOCK WSAEWOULDBLOCK
+#ifdef ETIMEDOUT
+#undef ETIMEDOUT
+#endif
 #define ETIMEDOUT WSAETIMEDOUT
 #define write(sock,buf,len) send(sock,buf,len,0)
 #else
@@ -227,7 +233,7 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
         int i;
         rfbLog("Autoprobing TCP port \n");
         for (i = 5900; i < 6000; i++) {
-            if ((rfbScreen->listenSock = rfbListenOnTCPPort(i, iface)) >= 0) {
+            if ((rfbScreen->listenSock = rfbListenOnTCPPort(i, iface)) != -1) {
 		rfbScreen->port = i;
 		break;
 	    }
@@ -248,7 +254,7 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
         int i;
         rfbLog("Autoprobing TCP6 port \n");
 	for (i = 5900; i < 6000; i++) {
-            if ((rfbScreen->listen6Sock = rfbListenOnTCP6Port(i, rfbScreen->listen6Interface)) >= 0) {
+            if ((rfbScreen->listen6Sock = rfbListenOnTCP6Port(i, rfbScreen->listen6Interface)) != -1) {
 		rfbScreen->ipv6port = i;
 		break;
 	    }
@@ -314,25 +320,25 @@ void rfbShutdownSockets(rfbScreenInfoPtr rfbScreen)
 
     rfbScreen->socketState = RFB_SOCKET_SHUTDOWN;
 
-    if(rfbScreen->inetdSock>-1) {
+    if(rfbScreen->inetdSock!=-1) {
 	closesocket(rfbScreen->inetdSock);
 	FD_CLR(rfbScreen->inetdSock,&rfbScreen->allFds);
 	rfbScreen->inetdSock=-1;
     }
 
-    if(rfbScreen->listenSock>-1) {
+    if(rfbScreen->listenSock!=-1) {
 	closesocket(rfbScreen->listenSock);
 	FD_CLR(rfbScreen->listenSock,&rfbScreen->allFds);
 	rfbScreen->listenSock=-1;
     }
 
-    if(rfbScreen->listen6Sock>-1) {
+    if(rfbScreen->listen6Sock!=-1) {
 	closesocket(rfbScreen->listen6Sock);
 	FD_CLR(rfbScreen->listen6Sock,&rfbScreen->allFds);
 	rfbScreen->listen6Sock=-1;
     }
 
-    if(rfbScreen->udpSock>-1) {
+    if(rfbScreen->udpSock!=-1) {
 	closesocket(rfbScreen->udpSock);
 	FD_CLR(rfbScreen->udpSock,&rfbScreen->allFds);
 	rfbScreen->udpSock=-1;
@@ -487,17 +493,17 @@ rfbProcessNewConnection(rfbScreenInfoPtr rfbScreen)
        has an incoming connection pending. We know that at least 
        one of them has, so this should not block for too long! */
     FD_ZERO(&listen_fds);  
-    if(rfbScreen->listenSock >= 0) 
+    if(rfbScreen->listenSock != -1) 
       FD_SET(rfbScreen->listenSock, &listen_fds);
-    if(rfbScreen->listen6Sock >= 0) 
+    if(rfbScreen->listen6Sock != -1) 
       FD_SET(rfbScreen->listen6Sock, &listen_fds);
     if (select(rfbScreen->maxFd+1, &listen_fds, NULL, NULL, NULL) == -1) {
       rfbLogPerror("rfbProcessNewConnection: error in select");
       return FALSE;
     }
-    if (rfbScreen->listenSock >= 0 && FD_ISSET(rfbScreen->listenSock, &listen_fds))
+    if (rfbScreen->listenSock != -1 && FD_ISSET(rfbScreen->listenSock, &listen_fds))
       chosen_listen_sock = rfbScreen->listenSock;
-    if (rfbScreen->listen6Sock >= 0 && FD_ISSET(rfbScreen->listen6Sock, &listen_fds))
+    if (rfbScreen->listen6Sock != -1 && FD_ISSET(rfbScreen->listen6Sock, &listen_fds))
       chosen_listen_sock = rfbScreen->listen6Sock;
 
     if ((sock = accept(chosen_listen_sock, NULL, NULL)) < 0) {
