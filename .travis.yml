@@ -1,4 +1,6 @@
 language: c
+dist: trusty
+sudo: required
 
 os:
   - linux
@@ -11,5 +13,9 @@ compiler:
 before_install:
 - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CFLAGS="-I/usr/local/opt/openssl/include $CFLAGS" LDFLAGS="-L/usr/local/opt/openssl/lib $LDFLAGS"; fi'
 
-# before build script, run autoreconf
-before_script: autoreconf -fiv
+# Build steps
+script:
+  - mkdir build
+  - cd build
+  - cmake .. && make
+

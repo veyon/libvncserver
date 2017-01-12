@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 cmake_policy(SET CMP0037 NEW)
 
 project(LibVNCServer)
@@ -14,11 +14,10 @@ set(PACKAGE_NAME           "LibVNCServer")
 set(FULL_PACKAGE_NAME      "LibVNCServer")
 set(VERSION_MAJOR          "0")
 set(VERSION_MINOR          "9")
-set(VERSION_PATCHLEVEL     "10")
-set(VERSION_SO             "0")
+set(VERSION_PATCHLEVEL     "12")
+set(VERSION_SO             "1")
 set(PACKAGE_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCHLEVEL}")
-set(PROJECT_BUGREPORT_PATH "http://sourceforge.net/projects/libvncserver")
-set(CMAKE_C_FLAGS "-O2 -W -Wall -g")
+set(PROJECT_BUGREPORT_PATH "https://github.com/LibVNC/libvncserver/issues")
 set(LIBVNCSERVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver)
 set(COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
 set(LIBVNCCLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libvncclient)
@@ -87,10 +86,17 @@ if(NOT HAVE_B64_IN_LIBC)
     if(HAVE_B64_IN_LIBRESOLV)
         set(RESOLV_LIB "resolv")
     endif(HAVE_B64_IN_LIBRESOLV)
+
+    # the function check somehow fails for apple but the function is there
+    if(APPLE)
+        set(RESOLV_LIB "resolv")
+    endif(APPLE)
+
 endif(NOT HAVE_B64_IN_LIBC)
 
 if(Threads_FOUND)
   option(TIGHTVNC_FILETRANSFER "Enable filetransfer" ON)
+  set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 endif(Threads_FOUND)
 if(ZLIB_FOUND)
   set(LIBVNCSERVER_HAVE_LIBZ 1)
@@ -382,14 +388,38 @@ endif(HAVE_FFMPEG)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/examples)
 foreach(test ${LIBVNCSERVER_TESTS})
   add_executable(examples_${test} ${LIBVNCSRVTEST_DIR}/${test}.c)
+  set_target_properties(examples_${test} PROPERTIES OUTPUT_NAME examples/${test})
   target_link_libraries(examples_${test} vncserver ${CMAKE_THREAD_LIBS_INIT})
 endforeach(test ${LIBVNCSERVER_TESTS})
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/client_examples)
 foreach(test ${LIBVNCCLIENT_TESTS})
   add_executable(client_examples_${test} ${LIBVNCCLITEST_DIR}/${test}.c ${LIBVNCCLITEST_DIR}/${${test}_EXTRA_SOURCES} )
+  set_target_properties(client_examples_${test} PROPERTIES OUTPUT_NAME client_examples/${test})
   target_link_libraries(client_examples_${test} vncclient ${CMAKE_THREAD_LIBS_INIT} ${X11_LIBRARIES} ${SDL_LIBRARY} ${FFMPEG_LIBRARIES})
 endforeach(test ${LIBVNCCLIENT_TESTS})
+
+# this gets the libraries needed by TARGET in "-libx -liby ..." form
+function(get_link_libraries OUT TARGET)
+    set(RESULT "")
+    get_target_property(LIBRARIES ${TARGET} INTERFACE_LINK_LIBRARIES)
+    foreach(LIB ${LIBRARIES})
+	string(REGEX REPLACE "^.*/lib" "" LIB ${LIB}) # remove leading path and "lib" name prefix
+	string(REGEX REPLACE "-l" "" LIB ${LIB}) # remove leading -l
+	string(REGEX REPLACE "\\.so$" "" LIB ${LIB}) # remove trailing .so
+	list(APPEND RESULT "-l${LIB}")
+    endforeach()
+    list(REMOVE_DUPLICATES RESULT)
+    string(CONCAT RESULT ${RESULT}) # back to string
+    string(REPLACE "-l" " -l" RESULT ${RESULT}) # re-add separators
+    set(${OUT} ${RESULT} PARENT_SCOPE)
+endfunction()
+
+get_link_libraries(PRIVATE_LIBS vncserver)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libvncserver.pc.cmakein ${CMAKE_CURRENT_BINARY_DIR}/libvncserver.pc @ONLY)
+get_link_libraries(PRIVATE_LIBS vncclient)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libvncclient.pc.cmakein ${CMAKE_CURRENT_BINARY_DIR}/libvncclient.pc @ONLY)
+
 
 install_targets(/lib vncserver)
 install_targets(/lib vncclient)
@@ -400,4 +430,9 @@ install_files(/include/rfb FILES
     rfb/rfbconfig.h
     rfb/rfbproto.h
     rfb/rfbregion.h
+)
+
+install_files(/lib/pkgconfig FILES
+    libvncserver.pc
+    libvncclient.pc
 )

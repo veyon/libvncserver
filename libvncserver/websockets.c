@@ -54,11 +54,24 @@
 #include "rfbssl.h"
 #include "rfbcrypto.h"
 
+#if defined(__APPLE__)
+
+#include <libkern/OSByteOrder.h>
+#define WS_NTOH64(n) OSSwapBigToHostInt64(n)
+#define WS_NTOH32(n) OSSwapBigToHostInt32(n)
+#define WS_NTOH16(n) OSSwapBigToHostInt16(n)
+#define WS_HTON64(n) OSSwapHostToBigInt64(n)
+#define WS_HTON16(n) OSSwapHostToBigInt16(n)
+
+#else
+
 #define WS_NTOH64(n) htobe64(n)
 #define WS_NTOH32(n) htobe32(n)
 #define WS_NTOH16(n) htobe16(n)
 #define WS_HTON64(n) htobe64(n)
 #define WS_HTON16(n) htobe16(n)
+
+#endif
 
 #define B64LEN(__x) (((__x + 2) / 3) * 12 / 3)
 #define WSHLENMAX 14  /* 2 + sizeof(uint64_t) + sizeof(uint32_t) */
@@ -153,6 +166,11 @@ Sec-WebSocket-Accept: %s\r\n\
 Sec-WebSocket-Protocol: %s\r\n\
 \r\n"
 
+#define SERVER_HANDSHAKE_HYBI_NO_PROTOCOL "HTTP/1.1 101 Switching Protocols\r\n\
+Upgrade: websocket\r\n\
+Connection: Upgrade\r\n\
+Sec-WebSocket-Accept: %s\r\n\
+\r\n"
 
 #define WEBSOCKETS_CLIENT_CONNECT_WAIT_MS 100
 #define WEBSOCKETS_CLIENT_SEND_WAIT_MS 100
@@ -189,7 +207,7 @@ static void webSocketsGenSha1Key(char *target, int size, char *key)
     iov[1].iov_base = GUID;
     iov[1].iov_len = sizeof(GUID) - 1;
     digestsha1(iov, 2, hash);
-    if (-1 == __b64_ntop(hash, sizeof(hash), target, size))
+    if (-1 == b64_ntop(hash, sizeof(hash), target, size))
 	rfbErr("b64_ntop failed\n");
 }
 
@@ -390,8 +408,12 @@ webSocketsHandshake(rfbClientPtr cl, char *scheme)
 	char accept[B64LEN(SHA1_HASH_SIZE) + 1];
 	rfbLog("  - WebSockets client version hybi-%02d\n", sec_ws_version);
 	webSocketsGenSha1Key(accept, sizeof(accept), sec_ws_key);
-	len = snprintf(response, WEBSOCKETS_MAX_HANDSHAKE_LEN,
-		 SERVER_HANDSHAKE_HYBI, accept, protocol);
+        if(strlen(protocol) > 0)
+            len = snprintf(response, WEBSOCKETS_MAX_HANDSHAKE_LEN,
+	                   SERVER_HANDSHAKE_HYBI, accept, protocol);
+        else
+            len = snprintf(response, WEBSOCKETS_MAX_HANDSHAKE_LEN,
+                           SERVER_HANDSHAKE_HYBI_NO_PROTOCOL, accept);
     } else {
 	/* older hixie handshake, this could be removed if
 	 * a final standard is established */
@@ -492,7 +514,7 @@ webSocketsEncodeHixie(rfbClientPtr cl, const char *src, int len, char **dst)
     ws_ctx_t *wsctx = (ws_ctx_t *)cl->wsctx;
 
     wsctx->codeBufEncode[sz++] = '\x00';
-    len = __b64_ntop((unsigned char *)src, len, wsctx->codeBufEncode+sz, sizeof(wsctx->codeBufEncode) - (sz + 1));
+    len = b64_ntop((unsigned char *)src, len, wsctx->codeBufEncode+sz, sizeof(wsctx->codeBufEncode) - (sz + 1));
     if (len < 0) {
         return len;
     }
@@ -603,7 +625,7 @@ webSocketsDecodeHixie(rfbClientPtr cl, char *dst, int len)
     /* Decode the rest of what we need */
     buf[needlen] = '\x00';  /* Replace end marker with end of string */
     /* rfbLog("buf: %s\n", buf); */
-    n = __b64_pton(buf, (unsigned char *)dst+retlen, 2+len);
+    n = b64_pton(buf, (unsigned char *)dst+retlen, 2+len);
     if (n < len) {
         rfbErr("Base64 decode error\n");
         errno = EIO;
@@ -743,7 +765,7 @@ webSocketsDecodeHybi(rfbClientPtr cl, char *dst, int len)
 	errno = ECONNRESET;
 	break;
       case WS_OPCODE_TEXT_FRAME:
-	if (-1 == (flength = __b64_pton(payload, (unsigned char *)wsctx->codeBufDecode, sizeof(wsctx->codeBufDecode)))) {
+	if (-1 == (flength = b64_pton(payload, (unsigned char *)wsctx->codeBufDecode, sizeof(wsctx->codeBufDecode)))) {
 	  rfbErr("%s: Base64 decode error; %m\n", __func__);
 	  break;
 	}
@@ -817,7 +839,7 @@ webSocketsEncodeHybi(rfbClientPtr cl, const char *src, int len, char **dst)
     }
 
     if (wsctx->base64) {
-        if (-1 == (ret = __b64_ntop((unsigned char *)src, len, wsctx->codeBufEncode + sz, sizeof(wsctx->codeBufEncode) - sz))) {
+        if (-1 == (ret = b64_ntop((unsigned char *)src, len, wsctx->codeBufEncode + sz, sizeof(wsctx->codeBufEncode) - sz))) {
 	  rfbErr("%s: Base 64 encode failed\n", __func__);
 	} else {
 	  if (ret != blen)
