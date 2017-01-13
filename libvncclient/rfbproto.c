@@ -160,10 +160,6 @@ static void FillRectangle(rfbClient* client, int x, int y, int w, int h, uint32_
       return;
   }
 
-  if (client->frameBuffer == NULL) {
-      return;
-  }
-
   if (!CheckRect(client, x, y, w, h)) {
     rfbClientLog("Rect out of bounds: %dx%d at (%d, %d)\n", x, y, w, h);
     return;
@@ -216,10 +212,6 @@ static void CopyRectangle(rfbClient* client, uint8_t* buffer, int x, int y, int 
 /* TODO: test */
 static void CopyRectangleFromRectangle(rfbClient* client, int src_x, int src_y, int w, int h, int dest_x, int dest_y) {
   int i,j;
-
-  if (client->frameBuffer == NULL) {
-      return;
-  }
 
   if (client->frameBuffer == NULL) {
       return;
