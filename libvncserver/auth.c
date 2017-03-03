@@ -307,16 +307,12 @@ void
 rfbAuthNewClient(rfbClientPtr cl)
 {
     uint32_t securityType = rfbSecTypeInvalid;
-#if 0
     if (!cl->screen->authPasswdData || cl->reverseConnection) {
 	/* chk if this condition is valid or not. */
 	securityType = rfbSecTypeNone;
     } else if (cl->screen->authPasswdData) {
  	    securityType = rfbSecTypeVncAuth;
     }
-#else
-	securityType = rfbMSLogon;
-#endif
 
     if (cl->protocolMajorVersion==3 && cl->protocolMinorVersion < 7)
     {

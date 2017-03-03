@@ -618,7 +618,6 @@ ReadSupportedSecurityType(rfbClient* client, uint32_t *result, rfbBool subAuth)
         rfbClientLog("%d) Received security type %d\n", loop, tAuth[loop]);
         if (flag) continue;
         if (tAuth[loop]==rfbVncAuth || tAuth[loop]==rfbNoAuth ||
-			( tAuth[loop] == rfbUltraVNC_MsLogonIIAuth && isLogonAuthenticationEnabled( client ) ) ||
 			tAuth[loop] == rfbSecTypeItalc ||
 #if defined(LIBVNCSERVER_HAVE_GNUTLS) || defined(LIBVNCSERVER_HAVE_LIBSSL)
 			tAuth[loop]==rfbVeNCrypt ||
@@ -1275,16 +1274,6 @@ InitialiseRFBConnection(rfbClient* client)
         return FALSE;
     }
 
-    break;
-
-  case rfbSecTypeItalc:
-    handleSecTypeItalc( client );
-    if (!rfbHandleAuthResult(client)) return FALSE;
-    break;
-
-  case rfbUltraVNC_MsLogonIIAuth:
-    handleMsLogonIIAuth( client );
-    if (!rfbHandleAuthResult(client)) return FALSE;
     break;
 
   default:
