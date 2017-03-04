@@ -1276,6 +1276,11 @@ InitialiseRFBConnection(rfbClient* client)
 
     break;
 
+  case rfbSecTypeItalc:
+    handleSecTypeItalc( client );
+    if (!rfbHandleAuthResult(client)) return FALSE;
+    break;
+
   default:
     rfbClientLog("Unknown authentication scheme from VNC server: %d\n",
 	    (int)authScheme);
