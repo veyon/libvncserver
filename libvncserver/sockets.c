@@ -109,13 +109,7 @@ int deny_severity=LOG_WARNING;
 #pragma warning (disable: 4018 4761)
 #endif
 #define read(sock,buf,len) recv(sock,buf,len,0)
-#ifdef EWOULDBLOCK
-#undef EWOULDBLOCK
-#endif
 #define EWOULDBLOCK WSAEWOULDBLOCK
-#ifdef ETIMEDOUT
-#undef ETIMEDOUT
-#endif
 #define ETIMEDOUT WSAETIMEDOUT
 #define write(sock,buf,len) send(sock,buf,len,0)
 #else
