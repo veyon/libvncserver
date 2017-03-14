@@ -261,7 +261,16 @@ rfbLogProc rfbErr=rfbDefaultLog;
 
 void rfbLogPerror(const char *str)
 {
+#ifdef WIN32
+    wchar_t *s = NULL;
+    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 
+                   NULL, errno, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                   (LPWSTR)&s, 0, NULL);
+    rfbErr("%s: %S\n", str, s);
+    LocalFree(s);
+#else
     rfbErr("%s: %s\n", str, strerror(errno));
+#endif
 }
 
 void rfbScheduleCopyRegion(rfbScreenInfoPtr rfbScreen,sraRegionPtr copyRegion,int dx,int dy)
@@ -1052,7 +1061,15 @@ void rfbInitServer(rfbScreenInfoPtr screen)
 {
 #ifdef WIN32
   WSADATA trash;
-  WSAStartup(MAKEWORD(2,2),&trash);
+  static rfbBool WSAinitted=FALSE;
+  if(!WSAinitted) {
+    int i=WSAStartup(MAKEWORD(2,0),&trash);
+    if(i!=0) {
+      rfbErr("Couldn't init Windows Sockets\n");
+      return 0;
+    }
+    WSAinitted=TRUE;
+  }
 #endif
   rfbInitSockets(screen);
   rfbHttpInitSockets(screen);
