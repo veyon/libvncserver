@@ -400,7 +400,7 @@ ConnectClientToTcpAddr6(const char *hostname, int port)
 
   if (sock == -1)
   {
-    rfbClientErr("ConnectClientToTcpAddr6: connect\n");
+    /*rfbClientErr("ConnectClientToTcpAddr6: connect\n");*/
     return -1;
   }
 
