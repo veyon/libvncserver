@@ -116,10 +116,10 @@ if(WITH_OPENSSL)
 endif(WITH_OPENSSL)
 
 
-if(WITH_SYSTEMD)
+if(WITH_SYSTEMD AND NOT ANDROID)
   find_package(PkgConfig)
   pkg_check_modules(SYSTEMD "libsystemd")
-endif(WITH_SYSTEMD)
+endif(WITH_SYSTEMD AND NOT ANDROID)
 
 
 if(WITH_GCRYPT)
@@ -431,6 +431,13 @@ if(MACOS)
   )
 endif(MACOS)
 
+if(ANDROID)
+  set(LIBVNCSERVER_EXAMPLES
+    ${LIBVNCSERVER_EXAMPLES}
+    androidvncserver
+  )
+endif(ANDROID)
+
 set(LIBVNCCLIENT_EXAMPLES
     backchannel
     ppmtest
@@ -498,7 +505,7 @@ foreach(t ${SIMPLETESTS})
   target_link_libraries(test_${t} vncserver vncclient ${ADDITIONAL_TEST_LIBS})
 endforeach(t ${SIMPLETESTS})
 
-if(FOUND_LIBJPEG_TURBO)
+if(WITH_JPEG AND FOUND_LIBJPEG_TURBO)
   add_executable(test_tjunittest
                  ${TESTS_DIR}/tjunittest.c
                  ${TESTS_DIR}/tjutil.c
@@ -523,7 +530,7 @@ if(FOUND_LIBJPEG_TURBO)
   set_target_properties(test_tjbench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test)
   target_link_libraries(test_tjbench vncserver vncclient ${ADDITIONAL_TEST_LIBS})
 
-endif(FOUND_LIBJPEG_TURBO)
+endif(WITH_JPEG AND FOUND_LIBJPEG_TURBO)
 
 add_test(NAME cargs COMMAND test_cargstest)
 if(FOUND_LIBJPEG_TURBO)
