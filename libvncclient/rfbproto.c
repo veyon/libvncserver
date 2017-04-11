@@ -69,7 +69,7 @@
 #include "minilzo.h"
 #include "tls.h"
 
-#include "ItalcRfbExt.h"
+#include "VeyonRfbExt.h"
 
 #ifdef _MSC_VER
 #  define snprintf _snprintf /* MSVC went straight to the underscored syntax */
@@ -499,7 +499,7 @@ ReadSupportedSecurityType(rfbClient* client, uint32_t *result, rfbBool subAuth)
         rfbClientLog("%d) Received security type %d\n", loop, tAuth[loop]);
         if (flag) continue;
         if (tAuth[loop]==rfbVncAuth || tAuth[loop]==rfbNoAuth ||
-			tAuth[loop] == rfbSecTypeItalc ||
+			tAuth[loop] == rfbSecTypeVeyon ||
 #if defined(LIBVNCSERVER_HAVE_GNUTLS) || defined(LIBVNCSERVER_HAVE_LIBSSL)
             tAuth[loop]==rfbVeNCrypt ||
 #endif
@@ -1157,8 +1157,8 @@ InitialiseRFBConnection(rfbClient* client)
 
     break;
 
-  case rfbSecTypeItalc:
-    handleSecTypeItalc( client );
+  case rfbSecTypeVeyon:
+    handleSecTypeVeyon( client );
     if (!rfbHandleAuthResult(client)) return FALSE;
     break;
 
