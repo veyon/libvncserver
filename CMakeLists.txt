@@ -26,6 +26,7 @@ set(LIBVNCSRVEXAMPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 set(LIBVNCCLIEXAMPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/client_examples)
 set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver ${CMAKE_CURRENT_SOURCE_DIR}/common)
@@ -41,6 +42,7 @@ option(WITH_GNUTLS "Search for the GnuTLS secure communications library to suppo
 option(WITH_OPENSSL "Search for the OpenSSL cryptography library to support encryption" ON)
 option(WITH_SYSTEMD "Search for libsystemd to build with systemd socket activation support" ON)
 option(WITH_GCRYPT "Search for libgcrypt to support additional authentication methods in LibVNCClient" ON)
+option(WITH_FFMPEG "Search for FFMPEG to build an example VNC to MPEG encoder" ON)
 option(WITH_TIGHTVNC_FILETRANSFER "Enable filetransfer if there is pthreads support" ON)
 option(WITH_24BPP "Allow 24 bpp" ON)
 option(WITH_IPv6 "Enable IPv6 Support" ON)
@@ -126,6 +128,10 @@ if(WITH_GCRYPT)
   find_library(LIBGCRYPT_LIBRARIES gcrypt)
 endif(WITH_GCRYPT)
 
+if(WITH_FFMPEG)
+  find_package(FFMPEG)
+endif(WITH_FFMPEG)
+
 
 check_include_file("endian.h"      LIBVNCSERVER_HAVE_ENDIAN_H)
 check_include_file("fcntl.h"       LIBVNCSERVER_HAVE_FCNTL_H)
@@ -151,7 +157,22 @@ check_include_file("sys/types.h"   HAVE_SYS_TYPES_H)
 check_function_exists(gettimeofday    LIBVNCSERVER_HAVE_GETTIMEOFDAY)
 check_function_exists(vfork           LIBVNCSERVER_HAVE_VFORK)
 check_function_exists(vprintf         LIBVNCSERVER_HAVE_VPRINTF)
-
+check_function_exists(mmap            LIBVNCSERVER_HAVE_MMAP)
+check_function_exists(fork            LIBVNCSERVER_HAVE_FORK)
+check_function_exists(ftime           LIBVNCSERVER_HAVE_FTIME)
+check_function_exists(gethostbyname   LIBVNCSERVER_HAVE_GETHOSTBYNAME)
+check_function_exists(gethostname     LIBVNCSERVER_HAVE_GETHOSTNAME)
+check_function_exists(inet_ntoa       LIBVNCSERVER_HAVE_INET_NTOA)
+check_function_exists(memmove         LIBVNCSERVER_HAVE_MEMMOVE)
+check_function_exists(memset          LIBVNCSERVER_HAVE_MEMSET)
+check_function_exists(mkfifo          LIBVNCSERVER_HAVE_MKFIFO)
+check_function_exists(select          LIBVNCSERVER_HAVE_SELECT)
+check_function_exists(socket          LIBVNCSERVER_HAVE_SOCKET)
+check_function_exists(strchr          LIBVNCSERVER_HAVE_STRCHR)
+check_function_exists(strcspn         LIBVNCSERVER_HAVE_STRCSPN)
+check_function_exists(strdup          LIBVNCSERVER_HAVE_STRDUP)
+check_function_exists(strerror        LIBVNCSERVER_HAVE_STRERROR)
+check_function_exists(strstr          LIBVNCSERVER_HAVE_STRSTR)
 
 # On systems such as GNU/Linux with glibc, __b64_ntop is defined in a
 # separate library, libresolv. On some others, such as FreeBSD, it is
@@ -224,6 +245,9 @@ if(WITH_GCRYPT AND LIBGCRYPT_LIBRARIES)
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${LIBGCRYPT_LIBRARIES})
 endif(WITH_GCRYPT AND LIBGCRYPT_LIBRARIES)
 
+if(OPENSSL_FOUND)
+  set(LIBVNCSERVER_HAVE_LIBSSL 1)
+endif(OPENSSL_FOUND)
 
 if(WITH_IPv6)
   if(WIN32 AND LIBVNCSERVER_HAVE_WS2TCPIP_H AND LIBVNCSERVER_HAVE_VPRINTF)
@@ -266,7 +290,7 @@ TEST_BIG_ENDIAN(LIBVNCSERVER_WORDS_BIGENDIAN)
 # LIBVNCSERVER_ENOENT_WORKAROUND
 # inline
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rfb/rfbconfig.h.cmake ${CMAKE_BINARY_DIR}/rfb/rfbconfig.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rfb/rfbconfig.h.cmakein ${CMAKE_BINARY_DIR}/rfb/rfbconfig.h)
 
 set(LIBVNCSERVER_SOURCES
     ${LIBVNCSERVER_DIR}/main.c
@@ -452,12 +476,12 @@ if(SDL_FOUND)
   set(SDLvncviewer_EXTRA_SOURCES scrap.c)
 endif(SDL_FOUND)
 
-if(HAVE_FFMPEG)
+if(FFMPEG_FOUND)
   set(LIBVNCCLIENT_EXAMPLES
     ${LIBVNCCLIENT_EXAMPLES}
     vnc2mpg
   )
-endif(HAVE_FFMPEG)
+endif(FFMPEG_FOUND)
 
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/examples)
