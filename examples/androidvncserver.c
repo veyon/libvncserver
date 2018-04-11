@@ -1,5 +1,10 @@
 /*
- * $Id$
+ * This example VNC server for Android is adopted from
+ * http://code.google.com/p/android-vnc-server/ with some additional
+ * fixes applied.
+ *
+ * To build, you'll need the Android Native Development Kit from
+ * http://developer.android.com/sdk/ndk/.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -243,7 +248,7 @@ static int keysym2scancode(rfbBool down, rfbKeySym key, rfbClientPtr cl)
     } else if (code>=0xFF50 && code<=0xFF58) {
         static const uint16_t map[] =
              {  KEY_HOME, KEY_LEFT, KEY_UP, KEY_RIGHT, KEY_DOWN,
-                KEY_SOFT1, KEY_SOFT2, KEY_END, 0 };
+                KEY_END, 0 };
         scancode = map[code & 0xF];
     } else if (code>=0xFFE1 && code<=0xFFEE) {
         static const uint16_t map[] =
@@ -264,10 +269,7 @@ static int keysym2scancode(rfbBool down, rfbKeySym key, rfbClientPtr cl)
         scancode = map[(code & 0x5F) - 'A'];
     } else {
         switch (code) {
-            case 0x0003:    scancode = KEY_CENTER;      break;
             case 0x0020:    scancode = KEY_SPACE;       break;
-            case 0x0023:    scancode = KEY_SHARP;       break;
-            case 0x0033:    scancode = KEY_SHARP;       break;
             case 0x002C:    scancode = KEY_COMMA;       break;
             case 0x003C:    scancode = KEY_COMMA;       break;
             case 0x002E:    scancode = KEY_DOT;         break;
@@ -280,7 +282,6 @@ static int keysym2scancode(rfbBool down, rfbKeySym key, rfbClientPtr cl)
             case 0xFF1B:    scancode = KEY_BACK;        break;
             case 0xFF09:    scancode = KEY_TAB;         break;
             case 0xFF0D:    scancode = KEY_ENTER;       break;
-            case 0x002A:    scancode = KEY_STAR;        break;
             case 0xFFBE:    scancode = KEY_F1;        break; // F1
             case 0xFFBF:    scancode = KEY_F2;         break; // F2
             case 0xFFC0:    scancode = KEY_F3;        break; // F3
@@ -459,7 +460,7 @@ void print_usage(char **argv)
 	printf("%s [-k device] [-t device] [-h]\n"
 		"-k device: keyboard device node, default is /dev/input/event3\n"
 		"-t device: touch device node, default is /dev/input/event1\n"
-		"-h : print this help\n");
+		"-h : print this help\n", argv[0]);
 }
 
 int main(int argc, char **argv)
@@ -517,6 +518,6 @@ int main(int argc, char **argv)
 
 	printf("Cleaning up...\n");
 	cleanup_fb();
-	cleanup_kdb();
+	cleanup_kbd();
 	cleanup_touch();
 }
