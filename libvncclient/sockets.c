@@ -89,6 +89,7 @@ rfbBool errorMessageOnReadFailure = TRUE;
 rfbBool
 ReadFromRFBServer(rfbClient* client, char *out, unsigned int n)
 {
+    int retries = 0;
 #undef DEBUG_READ_EXACT
 #ifdef DEBUG_READ_EXACT
 	char* oout=out;
@@ -178,6 +179,11 @@ ReadFromRFBServer(rfbClient* client, char *out, unsigned int n)
       if (i <= 0) {
 	if (i < 0) {
 	  if (errno == EWOULDBLOCK || errno == EAGAIN) {
+	    if (++retries > 100)
+	    {
+		rfbClientLog("Connection timed out\n");
+		return FALSE;
+	    }
 	    /* TODO:
 	       ProcessXtEvents();
 	    */
@@ -221,6 +227,11 @@ ReadFromRFBServer(rfbClient* client, char *out, unsigned int n)
 	  errno=WSAGetLastError();
 #endif
 	  if (errno == EWOULDBLOCK || errno == EAGAIN) {
+	    if (++retries > 100)
+	    {
+		rfbClientLog("Connection timed out\n");
+		return FALSE;
+	    }
 	    /* TODO:
 	       ProcessXtEvents();
 	    */
