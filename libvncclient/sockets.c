@@ -367,6 +367,11 @@ ConnectClientToTcpAddr(unsigned int host, int port)
   SOCKET sock;
   struct sockaddr_in addr;
   int one = 1;
+#ifdef WIN32
+  DWORD timeout;
+#else
+  struct timeval timeout;
+#endif
 
   if (!initSockets())
 	  return INVALID_SOCKET;
@@ -383,6 +388,15 @@ ConnectClientToTcpAddr(unsigned int host, int port)
     rfbClientErr("ConnectToTcpAddr: socket (%s)\n",strerror(errno));
     return INVALID_SOCKET;
   }
+
+#ifdef WIN32
+  timeout = 10000;
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
+#else
+  timeout.tv_sec = 10;
+  timeout.tv_usec = 0;
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+#endif
 
   if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
     rfbClientErr("ConnectToTcpAddr: connect\n");
@@ -409,6 +423,11 @@ ConnectClientToTcpAddr6(const char *hostname, int port)
   struct addrinfo hints, *res, *ressave;
   char port_s[10];
   int one = 1;
+#ifdef WIN32
+  DWORD timeout;
+#else
+  struct timeval timeout;
+#endif
 
   if (!initSockets())
 	  return INVALID_SOCKET;
@@ -430,6 +449,14 @@ ConnectClientToTcpAddr6(const char *hostname, int port)
     sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sock != INVALID_SOCKET)
     {
+#ifdef WIN32
+      timeout = 10000;
+      setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
+#else
+      timeout.tv_sec = 10;
+      timeout.tv_usec = 0;
+      setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+#endif
       if (connect(sock, res->ai_addr, res->ai_addrlen) == 0)
         break;
       close(sock);
