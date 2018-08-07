@@ -37,7 +37,6 @@ option(WITH_ZLIB "Search for the zlib compression library to support additional 
 option(WITH_JPEG "Search for the libjpeg compression library to support additional encodings" ON)
 option(WITH_PNG "Search for the PNG compression library to support additional encodings" ON)
 option(WITH_SDL "Search for the Simple Direct Media Layer library to build an example SDL vnc client" ON)
-option(WITH_X11 "Search for X11 to build the example SDL vnc client with clipboard support" ON)
 option(WITH_THREADS "Search for a threading library to build with multithreading support" ON)
 option(WITH_GNUTLS "Search for the GnuTLS secure communications library to support encryption" ON)
 option(WITH_OPENSSL "Search for the OpenSSL cryptography library to support encryption" ON)
@@ -101,13 +100,8 @@ endif(WITH_PNG)
 
 
 if(WITH_SDL)
-  find_package(SDL)
+  find_package(SDL2)
 endif(WITH_SDL)
-
-
-if(WITH_X11)
-  find_package(X11)
-endif(WITH_X11)
 
 
 if(WITH_THREADS)
@@ -224,20 +218,6 @@ endif(LIBVNCSERVER_HAVE_SYS_UIO_H)
 
 if(WITH_WEBSOCKETS AND LIBVNCSERVER_HAVE_CRYPTO)
   set(LIBVNCSERVER_WITH_WEBSOCKETS 1)
-  if(GNUTLS_FOUND)
-    message(STATUS "Building websockets with GnuTLS")
-    set(WEBSOCKET_LIBRARIES ${GNUTLS_LIBRARIES})
-    set(WSSRCS ${LIBVNCSERVER_DIR}/rfbssl_gnutls)
-    include_directories(${GNUTLS_INCLUDE_DIR})
-  elseif(OPENSSL_FOUND)
-    message(STATUS "Building websockets with OpenSSL")
-    set(WEBSOCKET_LIBRARIES ${OPENSSL_LIBRARIES})
-    set(WSSRCS ${LIBVNCSERVER_DIR}/rfbssl_openssl)
-  else()
-    message(STATUS "Building websockets without SSL")
-    set(WEBSOCKET_LIBRARIES)
-    set(WSSRCS ${LIBVNCSERVER_DIR}/rfbssl_none.c)
-  endif()
 endif(WITH_WEBSOCKETS AND LIBVNCSERVER_HAVE_CRYPTO)
 
 if(WITH_GCRYPT AND LIBGCRYPT_LIBRARIES)
@@ -245,6 +225,10 @@ if(WITH_GCRYPT AND LIBGCRYPT_LIBRARIES)
   set(LIBVNCSERVER_WITH_CLIENT_GCRYPT 1)
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${LIBGCRYPT_LIBRARIES})
 endif(WITH_GCRYPT AND LIBGCRYPT_LIBRARIES)
+
+if(GNUTLS_FOUND)
+  set(LIBVNCSERVER_HAVE_GNUTLS 1)
+endif(GNUTLS_FOUND)
 
 if(OPENSSL_FOUND)
   set(LIBVNCSERVER_HAVE_LIBSSL 1)
@@ -351,16 +335,29 @@ if(GNUTLS_FOUND)
     ${LIBVNCCLIENT_SOURCES}
     ${LIBVNCCLIENT_DIR}/tls_gnutls.c
   )
+  set(LIBVNCSERVER_SOURCES
+    ${LIBVNCSERVER_SOURCES}
+    ${LIBVNCSERVER_DIR}/rfbssl_gnutls.c
+    )
+  include_directories(${GNUTLS_INCLUDE_DIR})
 elseif(OPENSSL_FOUND)
   set(LIBVNCCLIENT_SOURCES
     ${LIBVNCCLIENT_SOURCES}
     ${LIBVNCCLIENT_DIR}/tls_openssl.c
+  )
+  set(LIBVNCSERVER_SOURCES
+    ${LIBVNCSERVER_SOURCES}
+    ${LIBVNCSERVER_DIR}/rfbssl_openssl.c
   )
   include_directories(${OPENSSL_INCLUDE_DIR})
 else()
   set(LIBVNCCLIENT_SOURCES
     ${LIBVNCCLIENT_SOURCES}
     ${LIBVNCCLIENT_DIR}/tls_none.c
+  )
+  set(LIBVNCSERVER_SOURCES
+    ${LIBVNCSERVER_SOURCES}
+    ${LIBVNCSERVER_DIR}/rfbssl_none.c
   )
 endif()
 
@@ -417,7 +414,6 @@ if(LIBVNCSERVER_WITH_WEBSOCKETS)
     ${LIBVNCSERVER_DIR}/ws_decode.c
     ${COMMON_DIR}/base64.c
     ${CRYPTO_SOURCES}
-    ${WSSRCS}
   )
 endif(LIBVNCSERVER_WITH_WEBSOCKETS)
 
@@ -440,7 +436,8 @@ target_link_libraries(vncserver
                       ${JPEG_LIBRARIES}
 		      ${PNG_LIBRARIES}
 		      ${CRYPTO_LIBRARIES}
-		      ${WEBSOCKET_LIBRARIES}
+                      ${GNUTLS_LIBRARIES}
+                      ${OPENSSL_LIBRARIES}
 )
 
 SET_TARGET_PROPERTIES(vncclient vncserver
@@ -497,14 +494,13 @@ set(LIBVNCCLIENT_EXAMPLES
     ppmtest
 )
 
-if(SDL_FOUND)
-  include_directories(${SDL_INCLUDE_DIR})
+if(SDL2_FOUND)
+  include_directories(${SDL2_INCLUDE_DIR})
   set(LIBVNCCLIENT_EXAMPLES
     ${LIBVNCCLIENT_EXAMPLES}
     SDLvncviewer
   )
-  set(SDLvncviewer_EXTRA_SOURCES scrap.c)
-endif(SDL_FOUND)
+endif(SDL2_FOUND)
 
 if(FFMPEG_FOUND)
   set(LIBVNCCLIENT_EXAMPLES
@@ -527,7 +523,7 @@ foreach(e ${LIBVNCCLIENT_EXAMPLES})
   add_executable(client_examples_${e} ${LIBVNCCLIEXAMPLE_DIR}/${e}.c ${LIBVNCCLIEXAMPLE_DIR}/${${e}_EXTRA_SOURCES} )
   set_target_properties(client_examples_${e} PROPERTIES OUTPUT_NAME ${e})
   set_target_properties(client_examples_${e} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/client_examples)
-  target_link_libraries(client_examples_${e} vncclient ${CMAKE_THREAD_LIBS_INIT} ${SDL_LIBRARY} ${X11_LIBRARIES} ${FFMPEG_LIBRARIES})
+  target_link_libraries(client_examples_${e} vncclient ${CMAKE_THREAD_LIBS_INIT} ${SDL2_LIBRARY} ${FFMPEG_LIBRARIES})
 endforeach(e ${LIBVNCCLIENT_EXAMPLES})
 
 
