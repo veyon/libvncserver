@@ -179,7 +179,7 @@ ReadFromRFBServer(rfbClient* client, char *out, unsigned int n)
       if (i <= 0) {
 	if (i < 0) {
 	  if (errno == EWOULDBLOCK || errno == EAGAIN) {
-	    if (++retries > 100)
+	    if (++retries > 1000)
 	    {
 		rfbClientLog("Connection timed out\n");
 		return FALSE;
@@ -227,7 +227,7 @@ ReadFromRFBServer(rfbClient* client, char *out, unsigned int n)
 	  errno=WSAGetLastError();
 #endif
 	  if (errno == EWOULDBLOCK || errno == EAGAIN) {
-	    if (++retries > 100)
+	    if (++retries > 1000)
 	    {
 		rfbClientLog("Connection timed out\n");
 		return FALSE;
