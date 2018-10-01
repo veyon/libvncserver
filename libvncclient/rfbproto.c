@@ -363,6 +363,7 @@ rfbBool ConnectToRFBRepeater(rfbClient* client,const char *repeaterHost, int rep
   rfbProtocolVersionMsg pv;
   int major,minor;
   char tmphost[250];
+  int tmphostlen;
 
 #ifdef LIBVNCSERVER_IPv6
   client->sock = ConnectClientToTcpAddr6(repeaterHost, repeaterPort);
@@ -396,8 +397,11 @@ rfbBool ConnectToRFBRepeater(rfbClient* client,const char *repeaterHost, int rep
 
   rfbClientLog("Connected to VNC repeater, using protocol version %d.%d\n", major, minor);
 
-  snprintf(tmphost, sizeof(tmphost), "%s:%d", destHost, destPort);
-  if (!WriteToRFBServer(client, tmphost, sizeof(tmphost)))
+  tmphostlen = snprintf(tmphost, sizeof(tmphost), "%s:%d", destHost, destPort);
+  if(tmphostlen < 0 || tmphostlen >= (int)sizeof(tmphost))
+    return FALSE; /* snprintf error or output truncated */
+
+  if (!WriteToRFBServer(client, tmphost, tmphostlen + 1))
     return FALSE;
 
   return TRUE;
@@ -427,7 +431,7 @@ rfbHandleAuthResult(rfbClient* client)
         /* we have an error following */
         if (!ReadFromRFBServer(client, (char *)&reasonLen, 4)) return FALSE;
         reasonLen = rfbClientSwap32IfLE(reasonLen);
-        reason = malloc(reasonLen+1);
+        reason = malloc((uint64_t)reasonLen+1);
         if (!ReadFromRFBServer(client, reason, reasonLen)) { free(reason); return FALSE; }
         reason[reasonLen]=0;
         rfbClientLog("VNC connection failed: %s\n",reason);
@@ -455,7 +459,7 @@ ReadReason(rfbClient* client)
     /* we have an error following */
     if (!ReadFromRFBServer(client, (char *)&reasonLen, 4)) return;
     reasonLen = rfbClientSwap32IfLE(reasonLen);
-    reason = malloc(reasonLen+1);
+    reason = malloc((uint64_t)reasonLen+1);
     if (!ReadFromRFBServer(client, reason, reasonLen)) { free(reason); return; }
     reason[reasonLen]=0;
     rfbClientLog("VNC connection failed: %s\n",reason);
@@ -1644,6 +1648,7 @@ SendKeyEvent(rfbClient* client, uint32_t key, rfbBool down)
 
   if (!SupportsClient2Server(client, rfbKeyEvent)) return TRUE;
 
+  memset(&ke, 0, sizeof(ke));
   ke.type = rfbKeyEvent;
   ke.down = down ? 1 : 0;
   ke.key = rfbClientSwap32IfLE(key);
@@ -1662,6 +1667,7 @@ SendClientCutText(rfbClient* client, char *str, int len)
 
   if (!SupportsClient2Server(client, rfbClientCutText)) return TRUE;
 
+  memset(&cct, 0, sizeof(cct));
   cct.type = rfbClientCutText;
   cct.length = rfbClientSwap32IfLE(len);
   return  (WriteToRFBServer(client, (char *)&cct, sz_rfbClientCutTextMsg) &&
@@ -1878,7 +1884,7 @@ HandleRFBServerMessage(rfbClient* client)
 	/* Regardless of cause, do not divide by zero. */
 	linesToRead = bytesPerLine ? (RFB_BUFFER_SIZE / bytesPerLine) : 0;
 
-	while (h > 0) {
+	while (linesToRead && h > 0) {
 	  if (linesToRead > h)
 	    linesToRead = h;
 
@@ -2186,10 +2192,12 @@ HandleRFBServerMessage(rfbClient* client)
 
     msg.sct.length = rfbClientSwap32IfLE(msg.sct.length);
 
-    buffer = malloc(msg.sct.length+1);
+    buffer = malloc((uint64_t)msg.sct.length+1);
 
-    if (!ReadFromRFBServer(client, buffer, msg.sct.length))
+    if (!ReadFromRFBServer(client, buffer, msg.sct.length)) {
+      free(buffer);
       return FALSE;
+    }
 
     buffer[msg.sct.length] = 0;
 
