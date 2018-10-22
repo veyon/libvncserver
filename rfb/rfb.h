@@ -746,13 +746,13 @@ extern int rfbReadExactTimeout(rfbClientPtr cl, char *buf, int len,int timeout);
 extern int rfbPeekExactTimeout(rfbClientPtr cl, char *buf, int len,int timeout);
 extern int rfbWriteExact(rfbClientPtr cl, const char *buf, int len);
 extern int rfbCheckFds(rfbScreenInfoPtr rfbScreen,long usec);
-extern int rfbConnect(rfbScreenInfoPtr rfbScreen, char* host, int port);
-extern int rfbConnectToTcpAddr(char* host, int port);
-extern int rfbListenOnTCPPort(int port, in_addr_t iface);
-extern int rfbListenOnTCP6Port(int port, const char* iface);
-extern int rfbListenOnUDPPort(int port, in_addr_t iface);
-extern int rfbStringToAddr(char* string,in_addr_t* addr);
-extern rfbBool rfbSetNonBlocking(int sock);
+extern SOCKET rfbConnect(rfbScreenInfoPtr rfbScreen, char* host, int port);
+extern SOCKET rfbConnectToTcpAddr(char* host, int port);
+extern SOCKET rfbListenOnTCPPort(int port, in_addr_t iface);
+extern SOCKET rfbListenOnTCP6Port(int port, const char* iface);
+extern SOCKET rfbListenOnUDPPort(int port, in_addr_t iface);
+extern SOCKET rfbStringToAddr(char* string,in_addr_t* addr);
+extern rfbBool rfbSetNonBlocking(SOCKET sock);
 
 #ifdef LIBVNCSERVER_WITH_WEBSOCKETS
 /* websockets.c */
@@ -777,14 +777,14 @@ extern void rfbReleaseClientIterator(rfbClientIteratorPtr iterator);
 extern void rfbIncrClientRef(rfbClientPtr cl);
 extern void rfbDecrClientRef(rfbClientPtr cl);
 
-extern void rfbNewClientConnection(rfbScreenInfoPtr rfbScreen,int sock);
-extern rfbClientPtr rfbNewClient(rfbScreenInfoPtr rfbScreen,int sock);
+extern void rfbNewClientConnection(rfbScreenInfoPtr rfbScreen,SOCKET sock);
+extern rfbClientPtr rfbNewClient(rfbScreenInfoPtr rfbScreen,SOCKET sock);
 extern rfbClientPtr rfbNewUDPClient(rfbScreenInfoPtr rfbScreen);
 extern rfbClientPtr rfbReverseConnection(rfbScreenInfoPtr rfbScreen,char *host, int port);
 extern void rfbClientConnectionGone(rfbClientPtr cl);
 extern void rfbProcessClientMessage(rfbClientPtr cl);
 extern void rfbClientConnFailed(rfbClientPtr cl, const char *reason);
-extern void rfbNewUDPConnection(rfbScreenInfoPtr rfbScreen,int sock);
+extern void rfbNewUDPConnection(rfbScreenInfoPtr rfbScreen,SOCKET sock);
 extern void rfbProcessUDPInput(rfbScreenInfoPtr rfbScreen);
 extern rfbBool rfbSendFramebufferUpdate(rfbClientPtr cl, sraRegionPtr updateRegion);
 extern rfbBool rfbSendRectEncodingRaw(rfbClientPtr cl, int x,int y,int w,int h);

@@ -54,14 +54,14 @@ listenForIncomingConnections(rfbClient* client)
   rfbClientErr("listenForIncomingConnections on MinGW32 NOT IMPLEMENTED\n");
   return;
 #else
-  int listenSocket, listen6Socket = -1;
+  int listenSocket = INVALID_SOCKET, listen6Socket = INVALID_SOCKET;
   fd_set fds;
 
   client->listenSpecified = TRUE;
 
   listenSocket = ListenAtTcpPortAndAddress(client->listenPort, client->listenAddress);
 
-  if ((listenSocket < 0))
+  if (listenSocket == INVALID_SOCKET)
     return;
 
   rfbClientLog("%s -listen: Listening on port %d\n",
@@ -71,11 +71,11 @@ listenForIncomingConnections(rfbClient* client)
 
 #ifdef LIBVNCSERVER_IPv6 /* only try that if we're IPv6-capable, otherwise we may try to bind to the same port which would make all that listening fail */ 
   /* only do IPv6 listen of listen6Port is set */
-  if (client->listen6Port > 0)
+  if (client->listen6Port != INVALID_SOCKET)
     {
       listen6Socket = ListenAtTcpPortAndAddress(client->listen6Port, client->listen6Address);
 
-      if (listen6Socket < 0)
+      if (listen6Socket == INVALID_SOCKET)
 	return;
 
       rfbClientLog("%s -listen: Listening on IPV6 port %d\n",
@@ -95,9 +95,9 @@ listenForIncomingConnections(rfbClient* client)
 
     FD_ZERO(&fds); 
 
-    if(listenSocket >= 0)
+    if(listenSocket != INVALID_SOCKET)
       FD_SET(listenSocket, &fds);  
-    if(listen6Socket >= 0)
+    if(listen6Socket != INVALID_SOCKET)
       FD_SET(listen6Socket, &fds);
 
     r = select(rfbMax(listenSocket, listen6Socket)+1, &fds, NULL, NULL, NULL);
@@ -108,7 +108,7 @@ listenForIncomingConnections(rfbClient* client)
       else if (FD_ISSET(listen6Socket, &fds))
 	client->sock = AcceptTcpConnection(client->listen6Sock);
 
-      if (client->sock < 0)
+      if (client->sock == INVALID_SOCKET)
 	return;
       if (!SetNonBlocking(client->sock))
 	return;
@@ -159,11 +159,11 @@ listenForIncomingConnectionsNoFork(rfbClient* client, int timeout)
 
   client->listenSpecified = TRUE;
 
-  if (client->listenSock < 0)
+  if (client->listenSock == INVALID_SOCKET)
     {
       client->listenSock = ListenAtTcpPortAndAddress(client->listenPort, client->listenAddress);
 
-      if (client->listenSock < 0)
+      if (client->listenSock == INVALID_SOCKET)
 	return -1;
 
       rfbClientLog("%s -listennofork: Listening on port %d\n",
@@ -174,11 +174,11 @@ listenForIncomingConnectionsNoFork(rfbClient* client, int timeout)
 
 #ifdef LIBVNCSERVER_IPv6 /* only try that if we're IPv6-capable, otherwise we may try to bind to the same port which would make all that listening fail */ 
   /* only do IPv6 listen of listen6Port is set */
-  if (client->listen6Port > 0 && client->listen6Sock < 0)
+  if (client->listen6Port != INVALID_SOCKET && client->listen6Sock == INVALID_SOCKET)
     {
       client->listen6Sock = ListenAtTcpPortAndAddress(client->listen6Port, client->listen6Address);
 
-      if (client->listen6Sock < 0)
+      if (client->listen6Sock == INVALID_SOCKET)
 	return -1;
 
       rfbClientLog("%s -listennofork: Listening on IPV6 port %d\n",
@@ -190,9 +190,9 @@ listenForIncomingConnectionsNoFork(rfbClient* client, int timeout)
 
   FD_ZERO(&fds);
 
-  if(client->listenSock >= 0)
+  if(client->listenSock != INVALID_SOCKET)
     FD_SET(client->listenSock, &fds);
-  if(client->listen6Sock >= 0)
+  if(client->listen6Sock != INVALID_SOCKET)
     FD_SET(client->listen6Sock, &fds);
 
   if (timeout < 0)
@@ -207,18 +207,18 @@ listenForIncomingConnectionsNoFork(rfbClient* client, int timeout)
       else if (FD_ISSET(client->listen6Sock, &fds))
 	client->sock = AcceptTcpConnection(client->listen6Sock);
 
-      if (client->sock < 0)
+      if (client->sock == INVALID_SOCKET)
 	return -1;
       if (!SetNonBlocking(client->sock))
 	return -1;
 
-      if(client->listenSock >= 0) {
+      if(client->listenSock != INVALID_SOCKET) {
 	close(client->listenSock);
-	client->listenSock = -1;
+	client->listenSock = INVALID_SOCKET;
       }
-      if(client->listen6Sock >= 0) {
+      if(client->listen6Sock != INVALID_SOCKET) {
 	close(client->listen6Sock);
-	client->listen6Sock = -1;
+	client->listen6Sock = INVALID_SOCKET;
       }
       return r;
     }

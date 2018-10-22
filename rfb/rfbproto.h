@@ -62,7 +62,7 @@
 
 #include <stdint.h>
 
-#if defined(WIN32) && !defined(__MINGW32__)
+#if defined(WIN32)
 #define LIBVNCSERVER_WORDS_BIGENDIAN
 typedef int8_t rfbBool;
 #include <sys/timeb.h>
@@ -91,7 +91,7 @@ typedef int8_t rfbBool;
 #endif
 
 #define rfbMax(a,b) (((a)>(b))?(a):(b))
-#if !defined(WIN32) || defined(__MINGW32__)
+#if !defined(WIN32)
 #ifdef LIBVNCSERVER_HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
@@ -99,6 +99,7 @@ typedef int8_t rfbBool;
 #include <netinet/in.h>
 #endif
 #define SOCKET int
+#define INVALID_SOCKET (-1)
 typedef int8_t rfbBool;
 #undef FALSE
 #define FALSE 0

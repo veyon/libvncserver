@@ -243,7 +243,7 @@ typedef struct _rfbClient {
 
 	/* rfbproto.c */
 
-	int sock;
+	SOCKET sock;
 	rfbBool canUseCoRRE;
 	rfbBool canUseHextile;
 	char *desktopName;
@@ -254,7 +254,7 @@ typedef struct _rfbClient {
 #define RFB_BUF_SIZE 8192
 	char buf[RFB_BUF_SIZE];
 	char *bufoutptr;
-	int buffered;
+	unsigned int buffered;
 
 	/* The zlib encoding requires expansion/decompression/deflation of the
 	   compressed data in the "buffer" above into another, result buffer.
@@ -380,13 +380,13 @@ typedef struct _rfbClient {
 	HandleXvpMsgProc           HandleXvpMsg;
 
 	/* listen.c */
-        int listenSock;
+        SOCKET listenSock;
 
 	FinishedFrameBufferUpdateProc FinishedFrameBufferUpdate;
 
 	char *listenAddress;
         /* IPv6 listen socket, address and port*/
-        int listen6Sock;
+        SOCKET listen6Sock;
         char* listen6Address;
         int listen6Port;
 
@@ -632,19 +632,19 @@ void rfbClientRegisterExtension(rfbClientProtocolExtension* e);
 extern rfbBool errorMessageOnReadFailure;
 
 extern rfbBool ReadFromRFBServer(rfbClient* client, char *out, unsigned int n);
-extern rfbBool WriteToRFBServer(rfbClient* client, char *buf, int n);
+extern rfbBool WriteToRFBServer(rfbClient* client, char *buf, unsigned int n);
 extern int FindFreeTcpPort(void);
-extern int ListenAtTcpPort(int port);
-extern int ListenAtTcpPortAndAddress(int port, const char *address);
-extern int ConnectClientToTcpAddr(unsigned int host, int port);
-extern int ConnectClientToTcpAddr6(const char *hostname, int port);
-extern int ConnectClientToUnixSock(const char *sockFile);
-extern int AcceptTcpConnection(int listenSock);
-extern rfbBool SetNonBlocking(int sock);
-extern rfbBool SetDSCP(int sock, int dscp);
+extern SOCKET ListenAtTcpPort(int port);
+extern SOCKET ListenAtTcpPortAndAddress(int port, const char *address);
+extern SOCKET ConnectClientToTcpAddr(unsigned int host, int port);
+extern SOCKET ConnectClientToTcpAddr6(const char *hostname, int port);
+extern SOCKET ConnectClientToUnixSock(const char *sockFile);
+extern SOCKET AcceptTcpConnection(SOCKET listenSock);
+extern rfbBool SetNonBlocking(SOCKET sock);
+extern rfbBool SetDSCP(SOCKET sock, int dscp);
 
 extern rfbBool StringToIPAddr(const char *str, unsigned int *addr);
-extern rfbBool SameMachine(int sock);
+extern rfbBool SameMachine(SOCKET sock);
 /**
  * Waits for an RFB message to arrive from the server. Before handling a message
  * with HandleRFBServerMessage(), you must wait for your client to receive one.

@@ -343,10 +343,10 @@ rfbClient* rfbGetClient(int bitsPerSample,int samplesPerPixel,
   client->tlsSession = NULL;
   client->LockWriteToTLS = NULL;
   client->UnlockWriteToTLS = NULL;
-  client->sock = -1;
-  client->listenSock = -1;
+  client->sock = INVALID_SOCKET;
+  client->listenSock = INVALID_SOCKET;
   client->listenAddress = NULL;
-  client->listen6Sock = -1;
+  client->listen6Sock = INVALID_SOCKET;
   client->listen6Address = NULL;
   client->clientAuthSchemes = NULL;
 
@@ -533,9 +533,9 @@ void rfbClientCleanup(rfbClient* client) {
     client->clientData = next;
   }
 
-  if (client->sock >= 0)
+  if (client->sock != INVALID_SOCKET)
     close(client->sock);
-  if (client->listenSock >= 0)
+  if (client->listenSock != INVALID_SOCKET)
     close(client->listenSock);
   free(client->desktopName);
   free(client->serverHost);

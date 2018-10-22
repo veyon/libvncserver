@@ -50,7 +50,7 @@ int main(int argc,char** argv)
   server->ipv6port = -1; /* do not listen on any port */
 
   sock = rfbConnectToTcpAddr(repeaterHost, repeaterPort);
-  if (sock < 0) {
+  if (sock == INVALID_SOCKET) {
     perror("connect to repeater");
     return 1;
   }
