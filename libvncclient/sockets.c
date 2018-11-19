@@ -468,7 +468,9 @@ ConnectClientToTcpAddr6(const char *hostname, int port)
 
   if (sock == INVALID_SOCKET)
   {
+#if 0
     rfbClientErr("ConnectClientToTcpAddr6: connect\n");
+#endif
     return INVALID_SOCKET;
   }
 
