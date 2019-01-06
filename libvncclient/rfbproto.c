@@ -1226,8 +1226,12 @@ InitialiseRFBConnection(rfbClient* client)
   client->si.format.blueMax = rfbClientSwap16IfLE(client->si.format.blueMax);
   client->si.nameLength = rfbClientSwap32IfLE(client->si.nameLength);
 
-  /* To guard against integer wrap-around, si.nameLength is cast to 64 bit */
-  client->desktopName = malloc((uint64_t)client->si.nameLength + 1);
+  if (client->si.nameLength > 1<<20) {
+      rfbClientErr("Too big desktop name length sent by server: %u B > 1 MB\n", (unsigned int)client->si.nameLength);
+      return FALSE;
+  }
+
+  client->desktopName = malloc(client->si.nameLength + 1);
   if (!client->desktopName) {
     rfbClientLog("Error allocating memory for desktop name, %lu bytes\n",
             (unsigned long)client->si.nameLength);
@@ -2225,7 +2229,7 @@ HandleRFBServerMessage(rfbClient* client)
 	    return FALSE;
     }  
 
-    buffer = malloc((uint64_t)msg.sct.length+1);
+    buffer = malloc(msg.sct.length+1);
 
     if (!ReadFromRFBServer(client, buffer, msg.sct.length)) {
       free(buffer);
