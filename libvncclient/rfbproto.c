@@ -61,7 +61,11 @@
 #endif
 
 #include "sasl.h"
+#ifdef LIBVNCSERVER_HAVE_LZO
+#include <lzo/lzo1x.h>
+#else
 #include "minilzo.h"
+#endif
 #include "tls.h"
 
 #include "VeyonRfbExt.h"
@@ -410,11 +414,29 @@ rfbBool ConnectToRFBRepeater(rfbClient* client,const char *repeaterHost, int rep
 extern void rfbClientEncryptBytes(unsigned char* bytes, char* passwd);
 extern void rfbClientEncryptBytes2(unsigned char *where, const int length, unsigned char *key);
 
+static void
+ReadReason(rfbClient* client)
+{
+    uint32_t reasonLen;
+    char *reason;
+
+    if (!ReadFromRFBServer(client, (char *)&reasonLen, 4)) return;
+    reasonLen = rfbClientSwap32IfLE(reasonLen);
+    if(reasonLen > 1<<20) {
+      rfbClientLog("VNC connection failed, but sent reason length of %u exceeds limit of 1MB",(unsigned int)reasonLen);
+      return;
+    }
+    reason = malloc(reasonLen+1);
+    if (!ReadFromRFBServer(client, reason, reasonLen)) { free(reason); return; }
+    reason[reasonLen]=0;
+    rfbClientLog("VNC connection failed: %s\n",reason);
+    free(reason);
+}
+
 rfbBool
 rfbHandleAuthResult(rfbClient* client)
 {
-    uint32_t authResult=0, reasonLen=0;
-    char *reason=NULL;
+    uint32_t authResult=0;
 
     if (!ReadFromRFBServer(client, (char *)&authResult, 4)) return FALSE;
 
@@ -429,13 +451,7 @@ rfbHandleAuthResult(rfbClient* client)
       if (client->major==3 && client->minor>7)
       {
         /* we have an error following */
-        if (!ReadFromRFBServer(client, (char *)&reasonLen, 4)) return FALSE;
-        reasonLen = rfbClientSwap32IfLE(reasonLen);
-        reason = malloc((uint64_t)reasonLen+1);
-        if (!ReadFromRFBServer(client, reason, reasonLen)) { free(reason); return FALSE; }
-        reason[reasonLen]=0;
-        rfbClientLog("VNC connection failed: %s\n",reason);
-        free(reason);
+        ReadReason(client);
         return FALSE;
       }
       rfbClientLog("VNC authentication failed\n");
@@ -450,21 +466,6 @@ rfbHandleAuthResult(rfbClient* client)
     return FALSE;
 }
 
-static void
-ReadReason(rfbClient* client)
-{
-    uint32_t reasonLen;
-    char *reason;
-
-    /* we have an error following */
-    if (!ReadFromRFBServer(client, (char *)&reasonLen, 4)) return;
-    reasonLen = rfbClientSwap32IfLE(reasonLen);
-    reason = malloc((uint64_t)reasonLen+1);
-    if (!ReadFromRFBServer(client, reason, reasonLen)) { free(reason); return; }
-    reason[reasonLen]=0;
-    rfbClientLog("VNC connection failed: %s\n",reason);
-    free(reason);
-}
 
 static rfbBool
 ReadSupportedSecurityType(rfbClient* client, uint32_t *result, rfbBool subAuth)
@@ -1227,8 +1228,12 @@ InitialiseRFBConnection(rfbClient* client)
   client->si.format.blueMax = rfbClientSwap16IfLE(client->si.format.blueMax);
   client->si.nameLength = rfbClientSwap32IfLE(client->si.nameLength);
 
-  /* To guard against integer wrap-around, si.nameLength is cast to 64 bit */
-  client->desktopName = malloc((uint64_t)client->si.nameLength + 1);
+  if (client->si.nameLength > 1<<20) {
+      rfbClientErr("Too big desktop name length sent by server: %u B > 1 MB\n", (unsigned int)client->si.nameLength);
+      return FALSE;
+  }
+
+  client->desktopName = malloc(client->si.nameLength + 1);
   if (!client->desktopName) {
     rfbClientLog("Error allocating memory for desktop name, %lu bytes\n",
             (unsigned long)client->si.nameLength);
@@ -2221,7 +2226,12 @@ HandleRFBServerMessage(rfbClient* client)
 
     msg.sct.length = rfbClientSwap32IfLE(msg.sct.length);
 
-    buffer = malloc((uint64_t)msg.sct.length+1);
+    if (msg.sct.length > 1<<20) {
+	    rfbClientErr("Ignoring too big cut text length sent by server: %u B > 1 MB\n", (unsigned int)msg.sct.length);
+	    return FALSE;
+    }  
+
+    buffer = malloc(msg.sct.length+1);
 
     if (!ReadFromRFBServer(client, buffer, msg.sct.length)) {
       free(buffer);
