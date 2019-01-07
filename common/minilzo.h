@@ -1,5 +1,3 @@
-#include <lzo/lzo1x.h>
-#if 0
 /* minilzo.h -- mini subset of the LZO real-time data compression library
 
    This file is part of the LZO real-time data compression library.
@@ -93,4 +91,4 @@ lzo1x_decompress_safe   ( const lzo_bytep src, lzo_uint  src_len,
 #endif
 
 #endif /* already included */
-#endif
+
