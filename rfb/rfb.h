@@ -691,6 +691,9 @@ typedef struct _rfbClientRec {
     rfbSslCtx *sslctx;
     wsCtx     *wsctx;
     char *wspath;                          /* Requests path component */
+#ifdef LIBVNCSERVER_HAVE_LIBPTHREAD
+    int pipe_notify_client_thread[2];
+#endif
 } rfbClientRec, *rfbClientPtr;
 
 /**
