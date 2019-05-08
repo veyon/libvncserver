@@ -9,6 +9,7 @@ include(CheckTypeSize)
 include(TestBigEndian)
 include(CheckCSourceCompiles)
 include(CheckCSourceRuns)
+include(GNUInstallDirs)
 
 enable_testing()
 
@@ -27,12 +28,14 @@ set(LIBVNCSRVEXAMPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 set(LIBVNCCLIEXAMPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/client_examples)
 set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
 # all the build configuration switches
+option(LIBVNCSERVER_INSTALL "Generate installation target" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" ${UNIX})
 option(WITH_ZLIB "Search for the zlib compression library to support additional encodings" ON)
 option(WITH_LZO "Search for the LZO compression library to omit internal miniLZO implementation" ON)
@@ -210,6 +213,8 @@ else()
 endif(JPEG_FOUND)
 if(PNG_FOUND)
   set(LIBVNCSERVER_HAVE_LIBPNG 1)
+else()
+  unset(PNG_LIBRARIES) # would otherwise contain -NOTFOUND, confusing target_link_libraries()
 endif(PNG_FOUND)
 if(NOT OPENSSL_FOUND)
     unset(OPENSSL_LIBRARIES) # would otherwise contain -NOTFOUND, confusing target_link_libraries()
@@ -309,7 +314,7 @@ endif(WITH_SASL AND LIBSASL2_LIBRARIES AND SASL2_INCLUDE_DIR)
 # LIBVNCSERVER_ENOENT_WORKAROUND
 # inline
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rfb/rfbconfig.h.cmakein ${CMAKE_BINARY_DIR}/rfb/rfbconfig.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rfb/rfbconfig.h.cmakein ${CMAKE_CURRENT_BINARY_DIR}/rfb/rfbconfig.h)
 
 set(LIBVNCSERVER_SOURCES
     ${LIBVNCSERVER_DIR}/main.c
@@ -665,19 +670,20 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libvncserver.pc.cmakein ${CMAKE_CURRE
 get_link_libraries(PRIVATE_LIBS vncclient)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libvncclient.pc.cmakein ${CMAKE_CURRENT_BINARY_DIR}/libvncclient.pc @ONLY)
 
-
-install_targets(/lib vncserver)
-install_targets(/lib vncclient)
-install_files(/include/rfb FILES
+if(LIBVNCSERVER_INSTALL)
+  install_targets(/${CMAKE_INSTALL_LIBDIR} vncserver)
+  install_targets(/${CMAKE_INSTALL_LIBDIR} vncclient)
+  install_files(/include/rfb FILES
     rfb/keysym.h
     rfb/rfb.h
     rfb/rfbclient.h
     rfb/rfbconfig.h
     rfb/rfbproto.h
     rfb/rfbregion.h
-)
+    )
 
-install_files(/lib/pkgconfig FILES
+  install_files(/${CMAKE_INSTALL_LIBDIR}/pkgconfig FILES
     libvncserver.pc
     libvncclient.pc
-)
+    )
+endif()

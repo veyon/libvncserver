@@ -271,6 +271,16 @@ There is also an array named "richSource" for colourful cursors. They have
 the same format as the frameBuffer (i.e. if the server is 32 bit,
 a 10x4 cursor has 4x10x4 bytes).
 
+Using Websockets
+----------------
+
+You can try out the built-in websockets support by starting the example server
+from the build directory via `examples/example`. It's important to _not_ start
+from within the `examples` directory as otherwise the server program won't find
+its HTTP index file. The server program will tell you a URL to point your web
+browser to. There, you can click on the noVNC-Button to connect using the bundled
+noVNC viewer.
+
 History
 =======
 
@@ -474,5 +484,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.dfdf
 Contact
 =======
 
-To contact me, mail me: Johannes dot Schindelin at gmx dot de
+* To file an issue, go to https://github.com/LibVNC/libvncserver/issues
+* For non-public contact mail dontmind at sdf dot org
 
