@@ -10,21 +10,21 @@ If you already used LibVNCServer, you probably want to read NEWS.
 What is it?
 ===========
 
-VNC is a set of programs using the RFB (Remote Frame Buffer) protocol. They
-are designed to "export" a frame buffer via net (if you don't know VNC, I
+[VNC](https://en.wikipedia.org/wiki/Virtual_Network_Computing) is a set of programs
+using the [RFB (Remote Frame Buffer)](https://github.com/rfbproto/rfbproto/blob/master/rfbproto.rst)
+protocol. They are designed to "export" a frame buffer via net (if you don't know VNC, I
 suggest you read "Basics" below). It is already in wide use for
 administration, but it is not that easy to program a server yourself.
 
 This has been changed by LibVNCServer.
 
-There are two examples included:
- - example, a shared scribble sheet
- - pnmshow, a program to show PNMs (pictures) over the net.
+There are several examples included, both for [servers](./examples) and 
+[clients](./client_examples).
 
-The examples are not too well documented, but easy straight forward and a
+These examples are not too well documented, but easy straight forward and a
 good starting point.
 
-Try example: it outputs on which port it listens (default: 5900), so it is
+Try 'example', a shared scribble sheet: it outputs on which port it listens (default: 5900), so it is
 display 0. To view, call
 	`vncviewer :0`
 You should see a sheet with a gradient and "Hello World!" written on it. Try
@@ -43,7 +43,7 @@ sheet change. Just press Escape in the viewer. Note that the server still
 runs, even if you closed both windows. When you reconnect now, everything you
 painted and wrote is still there. You can press "Page Up" for a blank page.
 
-The demo pnmshow is much simpler: you either provide a filename as argument
+The demo 'pnmshow' is much simpler: you either provide a filename as argument
 or pipe a file through stdin. Note that the file has to be a raw pnm/ppm file,
 i.e. a truecolour graphics. Only the Escape key is implemented. This may be
 the best starting point if you want to learn how to use LibVNCServer. You
@@ -338,22 +338,18 @@ Basics
 
 VNC (Virtual network computing) works like this: You set up a server and can
 connect to it via vncviewers. The communication uses a protocol named RFB
-(Remote Frame Buffer). If the server supports HTTP, you can also connect
-using a java enabled browser. In this case, the server sends back a
-vncviewer applet with the correct settings.
+(Remote Frame Buffer). If the server supports WebSockets (which LibVNCServer does), 
+you can also connect using an in-browser VNC viewer like [noVNC](https://novnc.com). 
 
 There exist several encodings for VNC, which are used to compress the regions
 which have changed before they are sent to the client. A client need not be
 able to understand every encoding, but at least Raw encoding. Which encoding
 it understands is negotiated by the RFB protocol.
 
-The following encodings are known to me:
-Raw, RRE, CoRRE, Hextile, CopyRect from the original AT&T code and
-Tight, ZLib, LastRect, XCursor, RichCursor from Const Kaplinsky et al.
-
-If you are using a modem, you want to try the "new" encodings. Especially
-with my 56k modem I like ZLib or Tight with Quality 0. In my tests, it even
-beats Tarantella.
+If you want to know how RFB works, please take the time and read the [protocol
+specification](https://github.com/rfbproto/rfbproto/blob/master/rfbproto.rst),
+it is very well written and contains a lot of prose that really explains how stuff
+works.
 
 There is the possibility to set a password, which is also negotiated by the
 RFB protocol, but IT IS NOT SECURE. Anybody sniffing your net can get the

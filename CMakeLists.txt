@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.4)
-cmake_policy(SET CMP0037 NEW)
 
-project(LibVNCServer C)
+project(LibVNCServer VERSION 0.9.12 LANGUAGES C)
 include(CheckFunctionExists)
 include(CheckSymbolExists)
 include(CheckIncludeFile)
@@ -15,11 +14,7 @@ enable_testing()
 
 set(PACKAGE_NAME           "LibVNCServer")
 set(FULL_PACKAGE_NAME      "LibVNCServer")
-set(VERSION_MAJOR          "0")
-set(VERSION_MINOR          "9")
-set(VERSION_PATCHLEVEL     "12")
 set(VERSION_SO             "1")
-set(PACKAGE_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCHLEVEL}")
 set(PROJECT_BUGREPORT_PATH "https://github.com/LibVNC/libvncserver/issues")
 set(LIBVNCSERVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver)
 set(COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
@@ -70,7 +65,11 @@ if(WITH_JPEG)
     # Check whether the version of libjpeg we found was libjpeg-turbo and print a
     # warning if not.
     set(CMAKE_REQUIRED_LIBRARIES ${JPEG_LIBRARIES})
-    set(CMAKE_REQUIRED_FLAGS -I${JPEG_INCLUDE_DIR})
+    if(JPEG_INCLUDE_DIRS) # this was not present in 3.4
+      set(CMAKE_REQUIRED_INCLUDES ${JPEG_INCLUDE_DIRS})
+    else()
+      set(CMAKE_REQUIRED_INCLUDES ${JPEG_INCLUDE_DIR})
+    endif()
 
     set(JPEG_TEST_SOURCE "\n
     #include <stdio.h>\n
@@ -94,7 +93,7 @@ if(WITH_JPEG)
     endif()
 
     set(CMAKE_REQUIRED_LIBRARIES)
-    set(CMAKE_REQUIRED_FLAGS)
+    set(CMAKE_REQUIRED_INCLUDES)
     set(CMAKE_REQUIRED_DEFINITIONS)
 
     if(NOT FOUND_LIBJPEG_TURBO)
@@ -481,7 +480,7 @@ target_link_libraries(vncserver
 )
 
 SET_TARGET_PROPERTIES(vncclient vncserver
-		PROPERTIES SOVERSION "${VERSION_SO}" VERSION "${PACKAGE_VERSION}"
+		PROPERTIES SOVERSION "${VERSION_SO}" VERSION "${LibVNCServer_VERSION}"
 )
 
 # EXAMPLES
