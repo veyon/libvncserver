@@ -900,6 +900,8 @@ rfbScreenInfoPtr rfbGetScreen(int* argc,char** argv,
    screen->listenSock=INVALID_SOCKET;
    screen->listen6Sock=INVALID_SOCKET;
 
+   screen->fdQuota = 0.5;
+
    screen->httpInitDone=FALSE;
    screen->httpEnableProxyConnect=FALSE;
    screen->httpPort=0;

@@ -154,6 +154,7 @@ check_include_file("sys/types.h"   LIBVNCSERVER_HAVE_SYS_TYPES_H)
 check_include_file("sys/wait.h"    LIBVNCSERVER_HAVE_SYS_WAIT_H)
 check_include_file("unistd.h"      LIBVNCSERVER_HAVE_UNISTD_H)
 check_include_file("sys/uio.h"     LIBVNCSERVER_HAVE_SYS_UIO_H)
+check_include_file("sys/resource.h"     LIBVNCSERVER_HAVE_SYS_RESOURCE_H)
 
 
 # headers needed for check_type_size()
@@ -480,7 +481,7 @@ target_link_libraries(vncserver
 )
 
 SET_TARGET_PROPERTIES(vncclient vncserver
-		PROPERTIES SOVERSION "${VERSION_SO}" VERSION "${LibVNCServer_VERSION}"
+		PROPERTIES SOVERSION "${VERSION_SO}" VERSION "${LibVNCServer_VERSION}" C_STANDARD 90
 )
 
 # EXAMPLES
