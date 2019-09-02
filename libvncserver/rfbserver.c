@@ -71,7 +71,7 @@
 #define DEBUGPROTO(x)
 #endif
 #include <stdarg.h>
-#include <scale.h>
+#include "scale.h"
 /* stst() */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -3723,6 +3723,8 @@ rfbSendServerCutText(rfbScreenInfoPtr rfbScreen,char *str, int len)
     rfbClientPtr cl;
     rfbServerCutTextMsg sct;
     rfbClientIteratorPtr iterator;
+
+    memset((char *)&sct, 0, sizeof(sct));
 
     iterator = rfbGetClientIterator(rfbScreen);
     while ((cl = rfbClientIteratorNext(iterator)) != NULL) {
