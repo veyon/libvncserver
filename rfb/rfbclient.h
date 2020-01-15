@@ -449,6 +449,8 @@ typedef struct _rfbClient {
 
 #endif
 #endif
+	/* timeout in seconds for select() after connect() */
+	unsigned int connectTimeout;
 } rfbClient;
 
 /* cursor.c */
