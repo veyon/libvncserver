@@ -39,14 +39,12 @@
 #include <rfb/rfbclient.h>
 
 #ifdef WIN32
-#undef SOCKET
 #include <winsock2.h>
 #ifdef EWOULDBLOCK
 #undef EWOULDBLOCK
 #endif
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define socklen_t int
-#define close closesocket
 #define read(sock,buf,len) recv(sock,buf,len,0)
 #define write(sock,buf,len) send(sock,buf,len,0)
 #ifdef LIBVNCSERVER_HAVE_WS2TCPIP_H

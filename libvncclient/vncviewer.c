@@ -22,7 +22,6 @@
  */
 
 #ifdef WIN32
-#undef SOCKET
 #include <winsock2.h>
 #endif
 
@@ -53,7 +52,6 @@ static void DummyRect(rfbClient* client, int x, int y, int w, int h) {
 static char* NoPassword(rfbClient* client) {
   return strdup("");
 }
-#define close closesocket
 #else
 #include <stdio.h>
 #include <termios.h>
@@ -343,10 +341,10 @@ rfbClient* rfbGetClient(int bitsPerSample,int samplesPerPixel,
   client->tlsSession = NULL;
   client->LockWriteToTLS = NULL;
   client->UnlockWriteToTLS = NULL;
-  client->sock = INVALID_SOCKET;
-  client->listenSock = INVALID_SOCKET;
+  client->sock = RFB_INVALID_SOCKET;
+  client->listenSock = RFB_INVALID_SOCKET;
   client->listenAddress = NULL;
-  client->listen6Sock = INVALID_SOCKET;
+  client->listen6Sock = RFB_INVALID_SOCKET;
   client->listen6Address = NULL;
   client->clientAuthSchemes = NULL;
 
@@ -533,10 +531,10 @@ void rfbClientCleanup(rfbClient* client) {
     client->clientData = next;
   }
 
-  if (client->sock != INVALID_SOCKET)
-    close(client->sock);
-  if (client->listenSock != INVALID_SOCKET)
-    close(client->listenSock);
+  if (client->sock != RFB_INVALID_SOCKET)
+    rfbCloseSocket(client->sock);
+  if (client->listenSock != RFB_INVALID_SOCKET)
+    rfbCloseSocket(client->listenSock);
   free(client->desktopName);
   free(client->serverHost);
   if (client->destHost)

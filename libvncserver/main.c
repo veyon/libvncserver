@@ -459,7 +459,7 @@ clientOutput(void *data)
     while (1) {
         haveUpdate = false;
         while (!haveUpdate) {
-		if (cl->sock == INVALID_SOCKET) {
+		if (cl->sock == RFB_INVALID_SOCKET) {
 			/* Client has disconnected. */
 			return NULL;
 		}
@@ -527,7 +527,7 @@ clientInput(void *data)
 	struct timeval tv;
 	int n;
 
-	if (cl->sock == INVALID_SOCKET) {
+	if (cl->sock == RFB_INVALID_SOCKET) {
 	  /* Client has disconnected. */
             break;
         }
@@ -609,9 +609,9 @@ listenerRun(void *data)
     while (1) {
         client_fd = -1;
         FD_ZERO(&listen_fds);
-	if(screen->listenSock != INVALID_SOCKET)
+	if(screen->listenSock != RFB_INVALID_SOCKET)
 	  FD_SET(screen->listenSock, &listen_fds);
-	if(screen->listen6Sock != INVALID_SOCKET)
+	if(screen->listen6Sock != RFB_INVALID_SOCKET)
 	  FD_SET(screen->listen6Sock, &listen_fds);
 
         if (select(screen->maxFd+1, &listen_fds, NULL, NULL, NULL) == -1) {
@@ -889,16 +889,16 @@ rfbScreenInfoPtr rfbGetScreen(int* argc,char** argv,
    screen->socketState=RFB_SOCKET_INIT;
 
    screen->inetdInitDone = FALSE;
-   screen->inetdSock=INVALID_SOCKET;
+   screen->inetdSock=RFB_INVALID_SOCKET;
 
-   screen->udpSock=INVALID_SOCKET;
+   screen->udpSock=RFB_INVALID_SOCKET;
    screen->udpSockConnected=FALSE;
    screen->udpPort=0;
    screen->udpClient=NULL;
 
    screen->maxFd=0;
-   screen->listenSock=INVALID_SOCKET;
-   screen->listen6Sock=INVALID_SOCKET;
+   screen->listenSock=RFB_INVALID_SOCKET;
+   screen->listen6Sock=RFB_INVALID_SOCKET;
 
    screen->fdQuota = 0.5;
 
@@ -907,9 +907,9 @@ rfbScreenInfoPtr rfbGetScreen(int* argc,char** argv,
    screen->httpPort=0;
    screen->http6Port=0;
    screen->httpDir=NULL;
-   screen->httpListenSock=INVALID_SOCKET;
-   screen->httpListen6Sock=INVALID_SOCKET;
-   screen->httpSock=INVALID_SOCKET;
+   screen->httpListenSock=RFB_INVALID_SOCKET;
+   screen->httpListen6Sock=RFB_INVALID_SOCKET;
+   screen->httpSock=RFB_INVALID_SOCKET;
 
    screen->desktopName = "LibVNCServer";
    screen->alwaysShared = FALSE;
@@ -1137,7 +1137,7 @@ void rfbShutdownServer(rfbScreenInfoPtr screen,rfbBool disconnectClients) {
 
     while(currentCl) {
       nextCl = rfbClientIteratorNext(iter);
-      if (currentCl->sock != INVALID_SOCKET) {
+      if (currentCl->sock != RFB_INVALID_SOCKET) {
         /* we don't care about maxfd here, because the server goes away */
         rfbCloseClient(currentCl);
       }
@@ -1152,6 +1152,8 @@ void rfbShutdownServer(rfbScreenInfoPtr screen,rfbBool disconnectClients) {
       write(currentCl->pipe_notify_client_thread[1], "\x00", 1);
       /* And wait for it to finish. */
       pthread_join(currentCl->client_thread, NULL);
+    } else {
+      rfbClientConnectionGone(currentCl);
     }
 #else
       rfbClientConnectionGone(currentCl);
@@ -1167,12 +1169,12 @@ void rfbShutdownServer(rfbScreenInfoPtr screen,rfbBool disconnectClients) {
   rfbHttpShutdownSockets(screen);
 }
 
-#ifndef LIBVNCSERVER_HAVE_GETTIMEOFDAY
+#if !defined LIBVNCSERVER_HAVE_GETTIMEOFDAY && defined WIN32
 #include <fcntl.h>
 #include <conio.h>
 #include <sys/timeb.h>
 
-void gettimeofday(struct timeval* tv,char* dummy)
+static void gettimeofday(struct timeval* tv,char* dummy)
 {
    SYSTEMTIME t;
    GetSystemTime(&t);
@@ -1202,7 +1204,7 @@ rfbProcessEvents(rfbScreenInfoPtr screen,long usec)
     result = rfbUpdateClient(cl);
     clPrev=cl;
     cl=rfbClientIteratorNext(i);
-    if(clPrev->sock==INVALID_SOCKET) {
+    if(clPrev->sock==RFB_INVALID_SOCKET) {
       rfbClientConnectionGone(clPrev);
       result=TRUE;
     }
@@ -1219,7 +1221,7 @@ rfbUpdateClient(rfbClientPtr cl)
   rfbBool result=FALSE;
   rfbScreenInfoPtr screen = cl->screen;
 
-  if (cl->sock != INVALID_SOCKET && !cl->onHold && FB_UPDATE_PENDING(cl) &&
+  if (cl->sock != RFB_INVALID_SOCKET && !cl->onHold && FB_UPDATE_PENDING(cl) &&
         !sraRgnEmpty(cl->requestedRegion)) {
       result=TRUE;
       if(screen->deferUpdateTime == 0) {

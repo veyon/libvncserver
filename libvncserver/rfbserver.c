@@ -253,7 +253,7 @@ rfbReleaseClientIterator(rfbClientIteratorPtr iterator)
 
 void
 rfbNewClientConnection(rfbScreenInfoPtr rfbScreen,
-                       SOCKET sock)
+                       rfbSocket sock)
 {
     rfbNewClient(rfbScreen,sock);
 }
@@ -269,7 +269,7 @@ rfbReverseConnection(rfbScreenInfoPtr rfbScreen,
                      char *host,
                      int port)
 {
-    SOCKET sock;
+    rfbSocket sock;
     rfbClientPtr cl;
 
     if ((sock = rfbConnect(rfbScreen, host, port)) < 0)
@@ -306,7 +306,7 @@ rfbSetProtocolVersion(rfbScreenInfoPtr rfbScreen, int major_, int minor_)
 
 static rfbClientPtr
 rfbNewTCPOrUDPClient(rfbScreenInfoPtr rfbScreen,
-                     SOCKET sock,
+                     rfbSocket sock,
                      rfbBool isUDP)
 {
     rfbProtocolVersionMsg pv;
@@ -362,7 +362,7 @@ rfbNewTCPOrUDPClient(rfbScreenInfoPtr rfbScreen,
       rfbLog("  %lu other clients\n", (unsigned long) otherClientsCount);
 
       if(!rfbSetNonBlocking(sock)) {
-	close(sock);
+	rfbCloseSocket(sock);
 	return NULL;
       }
 
@@ -522,7 +522,7 @@ rfbNewTCPOrUDPClient(rfbScreenInfoPtr rfbScreen,
 
 rfbClientPtr
 rfbNewClient(rfbScreenInfoPtr rfbScreen,
-             SOCKET sock)
+             rfbSocket sock)
 {
   return(rfbNewTCPOrUDPClient(rfbScreen,sock,FALSE));
 }
@@ -571,7 +571,7 @@ rfbClientConnectionGone(rfbClientPtr cl)
 #endif
 
     if(cl->sock>=0)
-	close(cl->sock);
+	rfbCloseSocket(cl->sock);
 
     if (cl->scaledScreen!=NULL)
         cl->scaledScreen->scaledScreenRefCount--;
@@ -3760,7 +3760,7 @@ static unsigned char ptrAcceleration = 50;
 
 void
 rfbNewUDPConnection(rfbScreenInfoPtr rfbScreen,
-                    SOCKET sock)
+                    rfbSocket sock)
 {
   if (write(sock, (char*) &ptrAcceleration, 1) < 0) {
 	rfbLogPerror("rfbNewUDPConnection: write");

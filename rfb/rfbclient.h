@@ -261,7 +261,7 @@ typedef struct _rfbClient {
 
 	/* rfbproto.c */
 
-	SOCKET sock;
+	rfbSocket sock;
 	rfbBool canUseCoRRE;
 	rfbBool canUseHextile;
 	char *desktopName;
@@ -398,13 +398,13 @@ typedef struct _rfbClient {
 	HandleXvpMsgProc           HandleXvpMsg;
 
 	/* listen.c */
-        SOCKET listenSock;
+        rfbSocket listenSock;
 
 	FinishedFrameBufferUpdateProc FinishedFrameBufferUpdate;
 
 	char *listenAddress;
         /* IPv6 listen socket, address and port*/
-        SOCKET listen6Sock;
+        rfbSocket listen6Sock;
         char* listen6Address;
         int listen6Port;
 
@@ -650,19 +650,19 @@ void rfbClientRegisterExtension(rfbClientProtocolExtension* e);
 extern rfbBool errorMessageOnReadFailure;
 
 extern rfbBool ReadFromRFBServer(rfbClient* client, char *out, unsigned int n);
-extern rfbBool WriteToRFBServer(rfbClient* client, char *buf, unsigned int n);
+extern rfbBool WriteToRFBServer(rfbClient* client, const char *buf, unsigned int n);
 extern int FindFreeTcpPort(void);
-extern SOCKET ListenAtTcpPort(int port);
-extern SOCKET ListenAtTcpPortAndAddress(int port, const char *address);
-extern SOCKET ConnectClientToTcpAddr(unsigned int host, int port);
-extern SOCKET ConnectClientToTcpAddr6(const char *hostname, int port);
-extern SOCKET ConnectClientToUnixSock(const char *sockFile);
-extern SOCKET AcceptTcpConnection(SOCKET listenSock);
-extern rfbBool SetNonBlocking(SOCKET sock);
-extern rfbBool SetDSCP(SOCKET sock, int dscp);
+extern rfbSocket ListenAtTcpPort(int port);
+extern rfbSocket ListenAtTcpPortAndAddress(int port, const char *address);
+extern rfbSocket ConnectClientToTcpAddr(unsigned int host, int port);
+extern rfbSocket ConnectClientToTcpAddr6(const char *hostname, int port);
+extern rfbSocket ConnectClientToUnixSock(const char *sockFile);
+extern rfbSocket AcceptTcpConnection(rfbSocket listenSock);
+extern rfbBool SetNonBlocking(rfbSocket sock);
+extern rfbBool SetDSCP(rfbSocket sock, int dscp);
 
 extern rfbBool StringToIPAddr(const char *str, unsigned int *addr);
-extern rfbBool SameMachine(SOCKET sock);
+extern rfbBool SameMachine(rfbSocket sock);
 /**
  * Waits for an RFB message to arrive from the server. Before handling a message
  * with HandleRFBServerMessage(), you must wait for your client to receive one.

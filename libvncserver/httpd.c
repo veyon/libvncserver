@@ -46,7 +46,6 @@
 #include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#define close closesocket
 #define strcasecmp _stricmp 
 #if defined(_MSC_VER)
 #include <BaseTsd.h> /* For the missing ssize_t */
@@ -115,7 +114,7 @@ rfbHttpInitSockets(rfbScreenInfoPtr rfbScreen)
     }
 
     if ((rfbScreen->httpListenSock =
-      rfbListenOnTCPPort(rfbScreen->httpPort, rfbScreen->listenInterface)) == INVALID_SOCKET) {
+      rfbListenOnTCPPort(rfbScreen->httpPort, rfbScreen->listenInterface)) == RFB_INVALID_SOCKET) {
 	rfbLogPerror("ListenOnTCPPort");
 	return;
     }
@@ -128,7 +127,7 @@ rfbHttpInitSockets(rfbScreenInfoPtr rfbScreen)
     }
 
     if ((rfbScreen->httpListen6Sock
-	 = rfbListenOnTCP6Port(rfbScreen->http6Port, rfbScreen->listen6Interface)) == INVALID_SOCKET) {
+	 = rfbListenOnTCP6Port(rfbScreen->http6Port, rfbScreen->listen6Interface)) == RFB_INVALID_SOCKET) {
       /* ListenOnTCP6Port has its own detailed error printout */
       return;
     }
@@ -139,21 +138,21 @@ rfbHttpInitSockets(rfbScreenInfoPtr rfbScreen)
 
 void rfbHttpShutdownSockets(rfbScreenInfoPtr rfbScreen) {
     if(rfbScreen->httpSock>-1) {
-	close(rfbScreen->httpSock);
+	rfbCloseSocket(rfbScreen->httpSock);
 	FD_CLR(rfbScreen->httpSock,&rfbScreen->allFds);
-	rfbScreen->httpSock=INVALID_SOCKET;
+	rfbScreen->httpSock=RFB_INVALID_SOCKET;
     }
 
     if(rfbScreen->httpListenSock>-1) {
-	close(rfbScreen->httpListenSock);
+	rfbCloseSocket(rfbScreen->httpListenSock);
 	FD_CLR(rfbScreen->httpListenSock,&rfbScreen->allFds);
-	rfbScreen->httpListenSock=INVALID_SOCKET;
+	rfbScreen->httpListenSock=RFB_INVALID_SOCKET;
     }
 
     if(rfbScreen->httpListen6Sock>-1) {
-	close(rfbScreen->httpListen6Sock);
+	rfbCloseSocket(rfbScreen->httpListen6Sock);
 	FD_CLR(rfbScreen->httpListen6Sock,&rfbScreen->allFds);
-	rfbScreen->httpListen6Sock=INVALID_SOCKET;
+	rfbScreen->httpListen6Sock=RFB_INVALID_SOCKET;
     }
 }
 
@@ -178,15 +177,15 @@ rfbHttpCheckFds(rfbScreenInfoPtr rfbScreen)
     if (!rfbScreen->httpDir)
 	return;
 
-    if (rfbScreen->httpListenSock == INVALID_SOCKET)
+    if (rfbScreen->httpListenSock == RFB_INVALID_SOCKET)
 	return;
 
     FD_ZERO(&fds);
     FD_SET(rfbScreen->httpListenSock, &fds);
-    if (rfbScreen->httpListen6Sock != INVALID_SOCKET) {
+    if (rfbScreen->httpListen6Sock != RFB_INVALID_SOCKET) {
 	FD_SET(rfbScreen->httpListen6Sock, &fds);
     }
-    if (rfbScreen->httpSock != INVALID_SOCKET) {
+    if (rfbScreen->httpSock != RFB_INVALID_SOCKET) {
 	FD_SET(rfbScreen->httpSock, &fds);
     }
     tv.tv_sec = 0;
@@ -204,21 +203,21 @@ rfbHttpCheckFds(rfbScreenInfoPtr rfbScreen)
 	return;
     }
 
-    if ((rfbScreen->httpSock != INVALID_SOCKET) && FD_ISSET(rfbScreen->httpSock, &fds)) {
+    if ((rfbScreen->httpSock != RFB_INVALID_SOCKET) && FD_ISSET(rfbScreen->httpSock, &fds)) {
 	httpProcessInput(rfbScreen);
     }
 
     if (FD_ISSET(rfbScreen->httpListenSock, &fds) || FD_ISSET(rfbScreen->httpListen6Sock, &fds)) {
-	if (rfbScreen->httpSock != INVALID_SOCKET) close(rfbScreen->httpSock);
+	if (rfbScreen->httpSock != RFB_INVALID_SOCKET) rfbCloseSocket(rfbScreen->httpSock);
 
 	if(FD_ISSET(rfbScreen->httpListenSock, &fds)) {
-	    if ((rfbScreen->httpSock = accept(rfbScreen->httpListenSock, (struct sockaddr *)&addr, &addrlen)) == INVALID_SOCKET) {
+	    if ((rfbScreen->httpSock = accept(rfbScreen->httpListenSock, (struct sockaddr *)&addr, &addrlen)) == RFB_INVALID_SOCKET) {
 	      rfbLogPerror("httpCheckFds: accept");
 	      return;
 	    }
 	}
 	else if(FD_ISSET(rfbScreen->httpListen6Sock, &fds)) {
-	    if ((rfbScreen->httpSock = accept(rfbScreen->httpListen6Sock, (struct sockaddr *)&addr, &addrlen)) == INVALID_SOCKET) {
+	    if ((rfbScreen->httpSock = accept(rfbScreen->httpListen6Sock, (struct sockaddr *)&addr, &addrlen)) == RFB_INVALID_SOCKET) {
 	      rfbLogPerror("httpCheckFds: accept");
 	      return;
 	    }
@@ -238,14 +237,14 @@ rfbHttpCheckFds(rfbScreenInfoPtr rfbScreen)
 		      STRING_UNKNOWN)) {
 	  rfbLog("Rejected HTTP connection from client %s\n",
 		 host);
-	  close(rfbScreen->httpSock);
-	  rfbScreen->httpSock=INVALID_SOCKET;
+	  rfbCloseSocket(rfbScreen->httpSock);
+	  rfbScreen->httpSock=RFB_INVALID_SOCKET;
 	  return;
 	}
 #endif
         if(!rfbSetNonBlocking(rfbScreen->httpSock)) {
-	    close(rfbScreen->httpSock);
-	    rfbScreen->httpSock=INVALID_SOCKET;
+	    rfbCloseSocket(rfbScreen->httpSock);
+	    rfbScreen->httpSock=RFB_INVALID_SOCKET;
 	    return;
 	}
 	/*AddEnabledDevice(httpSock);*/
@@ -256,8 +255,8 @@ rfbHttpCheckFds(rfbScreenInfoPtr rfbScreen)
 static void
 httpCloseSock(rfbScreenInfoPtr rfbScreen)
 {
-    close(rfbScreen->httpSock);
-    rfbScreen->httpSock = INVALID_SOCKET;
+    rfbCloseSocket(rfbScreen->httpSock);
+    rfbScreen->httpSock = RFB_INVALID_SOCKET;
     buf_filled = 0;
 }
 
@@ -354,7 +353,7 @@ httpProcessInput(rfbScreenInfoPtr rfbScreen)
 	    rfbLog("httpd: client asked for CONNECT\n");
 	    rfbWriteExact(&cl,PROXY_OK_STR,strlen(PROXY_OK_STR));
 	    rfbNewClientConnection(rfbScreen,rfbScreen->httpSock);
-	    rfbScreen->httpSock = INVALID_SOCKET;
+	    rfbScreen->httpSock = RFB_INVALID_SOCKET;
 	    return;
 	}
 	if (!strncmp(buf, "GET ",4) && !strncmp(strchr(buf,'/'),"/proxied.connection HTTP/1.", 27)) {
@@ -362,7 +361,7 @@ httpProcessInput(rfbScreenInfoPtr rfbScreen)
 	    rfbLog("httpd: client asked for /proxied.connection\n");
 	    rfbWriteExact(&cl,PROXY_OK_STR,strlen(PROXY_OK_STR));
 	    rfbNewClientConnection(rfbScreen,rfbScreen->httpSock);
-	    rfbScreen->httpSock = INVALID_SOCKET;
+	    rfbScreen->httpSock = RFB_INVALID_SOCKET;
 	    return;
 	}	   
     }
