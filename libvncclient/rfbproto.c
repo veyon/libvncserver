@@ -330,20 +330,15 @@ ConnectToRFBServer(rfbClient* client,const char *hostname, int port)
   {
 #ifdef LIBVNCSERVER_IPv6
     client->sock = ConnectClientToTcpAddr6(hostname, port);
-    if (client->sock == RFB_INVALID_SOCKET)
-    {
-    }
 #else
-    {
-      unsigned int host;
+    unsigned int host;
 
-      /* serverHost is a hostname */
-      if (!StringToIPAddr(hostname, &host)) {
-        rfbClientLog("Couldn't convert '%s' to host address\n", hostname);
-        return FALSE;
-      }
-      client->sock = ConnectClientToTcpAddr(host, port);
+    /* serverHost is a hostname */
+    if (!StringToIPAddr(hostname, &host)) {
+      rfbClientLog("Couldn't convert '%s' to host address\n", hostname);
+      return FALSE;
     }
+    client->sock = ConnectClientToTcpAddr(host, port);
 #endif
   }
 
@@ -370,19 +365,14 @@ rfbBool ConnectToRFBRepeater(rfbClient* client,const char *repeaterHost, int rep
 
 #ifdef LIBVNCSERVER_IPv6
   client->sock = ConnectClientToTcpAddr6(repeaterHost, repeaterPort);
-  if (client->sock == RFB_INVALID_SOCKET)
-  {
-  }
 #else
-  {
-    unsigned int host;
-    if (!StringToIPAddr(repeaterHost, &host)) {
-      rfbClientLog("Couldn't convert '%s' to host address\n", repeaterHost);
-      return FALSE;
-    }
-
-    client->sock = ConnectClientToTcpAddr(host, repeaterPort);
+  unsigned int host;
+  if (!StringToIPAddr(repeaterHost, &host)) {
+    rfbClientLog("Couldn't convert '%s' to host address\n", repeaterHost);
+    return FALSE;
   }
+
+  client->sock = ConnectClientToTcpAddr(host, repeaterPort);
 #endif
 
   if (client->sock == RFB_INVALID_SOCKET) {
