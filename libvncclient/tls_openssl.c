@@ -268,7 +268,7 @@ open_ssl_connection (rfbClient *client, int sockfd, rfbBool anonTLS, rfbCredenti
   SSL *ssl = NULL;
   int n, finished = 0;
   X509_VERIFY_PARAM *param;
-  uint8_t verify_crls = cred->x509Credential.x509CrlVerifyMode;
+  uint8_t verify_crls;
 
   if (!(ssl_ctx = SSL_CTX_new(SSLv23_client_method())))
   {
@@ -281,6 +281,7 @@ open_ssl_connection (rfbClient *client, int sockfd, rfbBool anonTLS, rfbCredenti
   /* Setup verification if not anonymous */
   if (!anonTLS)
   {
+    verify_crls = cred->x509Credential.x509CrlVerifyMode;
     if (cred->x509Credential.x509CACertFile)
     {
       if (!SSL_CTX_load_verify_locations(ssl_ctx, cred->x509Credential.x509CACertFile, NULL))
@@ -339,6 +340,14 @@ open_ssl_connection (rfbClient *client, int sockfd, rfbBool anonTLS, rfbCredenti
     }
     SSL_CTX_set1_param(ssl_ctx, param);
   }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  /*
+    See https://www.openssl.org/docs/man1.1.0/man3/SSL_set_security_level.html
+    Not specifying 0 here makes LibVNCClient fail connecting to some servers.
+  */
+  SSL_CTX_set_security_level(ssl_ctx, 0);
+#endif
 
   if (!(ssl = SSL_new (ssl_ctx)))
   {
@@ -451,12 +460,6 @@ ReadVeNCryptSecurityType(rfbClient* client, uint32_t *result)
     if (count==0)
     {
         rfbClientLog("List of security types is ZERO. Giving up.\n");
-        return FALSE;
-    }
-
-    if (count>sizeof(tAuth))
-    {
-        rfbClientLog("%d security types are too many; maximum is %d\n", count, sizeof(tAuth));
         return FALSE;
     }
 
