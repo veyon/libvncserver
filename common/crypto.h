@@ -7,8 +7,6 @@
 #define SHA1_HASH_SIZE 20
 #define MD5_HASH_SIZE 16
 
-#pragma GCC visibility push(default)
-
 /* Generates an MD5 hash of 'in' and writes it to 'out', which must be 16 bytes in size. */
 int hash_md5(void *out, const void *in, const size_t in_len);
 
@@ -44,7 +42,5 @@ int dh_generate_keypair(uint8_t *priv_out, uint8_t *pub_out, const uint8_t *gen,
   key 'pub' and the modulo prime 'prime' and writes it to 'shared_out', which must be 'keylen' in size.
  */
 int dh_compute_shared_key(uint8_t *shared_out, const uint8_t *priv, const uint8_t *pub, const uint8_t *prime, const size_t keylen);
-
-#pragma GCC visibility pop
 
 #endif
