@@ -49,6 +49,10 @@
 #ifdef WIN32
 #define srandom srand
 #define random rand
+#include <process.h>
+#ifdef _MSC_VER
+#pragma warning(disable:4996)
+#endif
 #else
 #include <sys/time.h>
 #endif

@@ -18,6 +18,7 @@
  *  USA.
  */
 
+#include <stdio.h>
 #ifndef _MSC_VER
 #define _XOPEN_SOURCE 500
 #endif
@@ -63,6 +64,7 @@ typedef SSIZE_T ssize_t;
 
 static rfbBool rfbTLSInitialized = FALSE;
 static MUTEX_TYPE *mutex_buf = NULL;
+static MUTEX_TYPE mutex_rw;
 
 struct CRYPTO_dynlock_value {
 	MUTEX_TYPE mutex;
@@ -115,9 +117,9 @@ dyn_destroy_function(struct CRYPTO_dynlock_value *l, const char *file, int line)
 
 
 static int
-ssl_errno (SSL *ssl, int ret)
+ssl_error_to_errno (int ssl_error)
 {
-	switch (SSL_get_error (ssl, ret)) {
+	switch (ssl_error) {
 	case SSL_ERROR_NONE:
 		return 0;
 	case SSL_ERROR_ZERO_RETURN:
@@ -155,6 +157,8 @@ InitializeTLS(void)
 
   for (i = 0; i < CRYPTO_num_locks(); i++)
     MUTEX_INIT(mutex_buf[i]);
+
+  MUTEX_INIT(mutex_rw);
 
   CRYPTO_set_locking_callback(locking_function);
   CRYPTO_set_id_callback(id_function);
@@ -339,24 +343,29 @@ open_ssl_connection (rfbClient *client, int sockfd, rfbBool anonTLS, rfbCredenti
       goto error_free_ctx;
     }
     SSL_CTX_set1_param(ssl_ctx, param);
-  }
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  /*
-    See https://www.openssl.org/docs/man1.1.0/man3/SSL_set_security_level.html
-    Not specifying 0 here makes LibVNCClient fail connecting to some servers.
-  */
-  SSL_CTX_set_security_level(ssl_ctx, 0);
+    SSL_CTX_set_cipher_list(ssl_ctx, "ALL");
+  } else { /* anonTLS here */
+      /* Need ADH cipher for anonTLS, see https://github.com/LibVNC/libvncserver/issues/347#issuecomment-597477103 */
+      SSL_CTX_set_cipher_list(ssl_ctx, "ADH");
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined LIBRESSL_VERSION_NUMBER
+      /*
+	See https://www.openssl.org/docs/man1.1.0/man3/SSL_set_security_level.html
+	Not specifying 0 here makes LibVNCClient fail connecting to some servers.
+      */
+      SSL_CTX_set_security_level(ssl_ctx, 0);
+      /*
+	Specifying a maximum protocol version of 1.2 gets us ADH cipher on OpenSSL 1.1.x,
+	see https://github.com/LibVNC/libvncserver/issues/347#issuecomment-597974313
+       */
+      SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_2_VERSION);
 #endif
+  }
 
   if (!(ssl = SSL_new (ssl_ctx)))
   {
     rfbClientLog("Could not create a new SSL session.\n");
     goto error_free_ctx;
   }
-
-  /* TODO: finetune this list, take into account anonTLS bool */
-  SSL_set_cipher_list(ssl, "ALL");
 
   SSL_set_fd (ssl, sockfd);
   SSL_CTX_set_app_data (ssl_ctx, client);
@@ -623,14 +632,19 @@ int
 ReadFromTLS(rfbClient* client, char *out, unsigned int n)
 {
   ssize_t ret;
+  int ssl_error = SSL_ERROR_NONE;
 
+  MUTEX_LOCK(mutex_rw);
   ret = SSL_read (client->tlsSession, out, n);
+
+  if (ret < 0)
+      ssl_error = SSL_get_error(client->tlsSession, ret);
+  MUTEX_UNLOCK(mutex_rw);
 
   if (ret >= 0)
     return ret;
   else {
-    errno = ssl_errno (client->tlsSession, ret);
-
+    errno = ssl_error_to_errno(ssl_error);
     if (errno != EAGAIN) {
       rfbClientLog("Error reading from TLS: -.\n");
     }
@@ -644,18 +658,21 @@ WriteToTLS(rfbClient* client, const char *buf, unsigned int n)
 {
   unsigned int offset = 0;
   ssize_t ret;
+  int ssl_error = SSL_ERROR_NONE;
 
   while (offset < n)
   {
-
+    MUTEX_LOCK(mutex_rw);
     ret = SSL_write (client->tlsSession, buf + offset, (size_t)(n-offset));
 
     if (ret < 0)
-      errno = ssl_errno (client->tlsSession, ret);
+      ssl_error = SSL_get_error (client->tlsSession, ret);
+    MUTEX_UNLOCK(mutex_rw);
 
     if (ret == 0) continue;
     if (ret < 0)
     {
+      errno = ssl_error_to_errno(ssl_error);
       if (errno == EAGAIN || errno == EWOULDBLOCK) continue;
       rfbClientLog("Error writing to TLS: -\n");
       return -1;
@@ -682,6 +699,8 @@ void FreeTLS(rfbClient* client)
     free(mutex_buf);
     mutex_buf = NULL;
   }
+
+  MUTEX_FREE(mutex_rw);
 
   SSL_free(client->tlsSession);
 }

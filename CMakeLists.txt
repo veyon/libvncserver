@@ -25,7 +25,15 @@ set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
+if(CMAKE_GENERATOR MATCHES "Unix Makefiles|Ninja")
+# some LSP servers expect compile_commands.json in the project root
+add_custom_target(
+    copy-compile-commands ALL
+    ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif(CMAKE_GENERATOR MATCHES "Unix Makefiles|Ninja")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
@@ -39,6 +47,7 @@ option(WITH_PNG "Search for the PNG compression library to support additional en
 option(WITH_SDL "Search for the Simple Direct Media Layer library to build an example SDL vnc client" ON)
 option(WITH_GTK "Search for the GTK library to build an example GTK vnc client" ON)
 option(WITH_THREADS "Search for a threading library to build with multithreading support" ON)
+option(PREFER_WIN32THREADS "When searching for a threading library, prefer win32 threads if they are found" OFF)
 option(WITH_GNUTLS "Search for the GnuTLS secure communications library to support TLS" ON)
 option(WITH_OPENSSL "Search for the OpenSSL cryptography library to support TLS and use as crypto backend" ON)
 option(WITH_SYSTEMD "Search for libsystemd to build with systemd socket activation support" ON)
@@ -197,9 +206,9 @@ check_function_exists(strstr          LIBVNCSERVER_HAVE_STRSTR)
 check_symbol_exists(htobe64 "endian.h" LIBVNCSERVER_HAVE_HTOBE64)
 check_symbol_exists(OSSwapHostToBigInt64 "libkern/OSByteOrder.h" LIBVNCSERVER_HAVE_OSSWAPHOSTTOBIGINT64)
 
-if(Threads_FOUND)
+if(WITH_THREADS AND Threads_FOUND)
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-endif(Threads_FOUND)
+endif(WITH_THREADS AND Threads_FOUND)
 if(ZLIB_FOUND)
   set(LIBVNCSERVER_HAVE_LIBZ 1)
 else()
@@ -274,10 +283,27 @@ if(WITH_24BPP)
   set(LIBVNCSERVER_ALLOW24BPP 1)
 endif()
 
+# Make sure that only one threading system is used. This happens on MinGW.
+if(WITH_THREADS)
+  if(CMAKE_USE_PTHREADS_INIT AND CMAKE_USE_WIN32_THREADS_INIT)
+    if(PREFER_WIN32THREADS)
+      unset(CMAKE_USE_PTHREADS_INIT)
+    else()
+      unset(CMAKE_USE_WIN32_THREADS_INIT)
+    endif(PREFER_WIN32THREADS)
+  endif(CMAKE_USE_PTHREADS_INIT AND CMAKE_USE_WIN32_THREADS_INIT)
 
-if(CMAKE_USE_PTHREADS_INIT)
-  set(LIBVNCSERVER_HAVE_LIBPTHREAD 1)
-endif(CMAKE_USE_PTHREADS_INIT)
+  if(CMAKE_USE_PTHREADS_INIT)
+    set(LIBVNCSERVER_HAVE_LIBPTHREAD 1)
+    message(STATUS "Threads support is using pthreads")
+  endif(CMAKE_USE_PTHREADS_INIT)
+
+  if(CMAKE_USE_WIN32_THREADS_INIT)
+    set(LIBVNCSERVER_HAVE_WIN32THREADS 1)
+    message(STATUS "Threads support is using win32 threads")
+  endif(CMAKE_USE_WIN32_THREADS_INIT)
+endif(WITH_THREADS)
+
 if(LIBVNCSERVER_HAVE_SYS_SOCKET_H)
   # socklen_t
   list(APPEND CMAKE_EXTRA_INCLUDE_FILES "sys/socket.h")
@@ -440,7 +466,7 @@ set(LIBVNCSERVER_SOURCES
     ${TIGHT_C}
 )
 
-if(WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
+if(WITH_THREADS AND WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
   set(LIBVNCSERVER_SOURCES
     ${LIBVNCSERVER_SOURCES}
     ${LIBVNCSERVER_DIR}/tightvnc-filetransfer/rfbtightserver.c
@@ -448,7 +474,7 @@ if(WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
     ${LIBVNCSERVER_DIR}/tightvnc-filetransfer/filetransfermsg.c
     ${LIBVNCSERVER_DIR}/tightvnc-filetransfer/filelistinfo.c
   )
-endif(WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
+endif(WITH_THREADS AND WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
 
 if(LIBVNCSERVER_WITH_WEBSOCKETS)
   add_definitions(-DLIBVNCSERVER_WITH_WEBSOCKETS)
@@ -497,6 +523,7 @@ SET_TARGET_PROPERTIES(vncclient vncserver
 set(LIBVNCSERVER_EXAMPLES
     backchannel
     camera
+    cursors
     colourmaptest
     example
     fontsel
@@ -511,26 +538,28 @@ set(LIBVNCSERVER_EXAMPLES
     vncev
   )
 
-if(CMAKE_USE_PTHREADS_INIT)
+if(WITH_THREADS AND (CMAKE_USE_PTHREADS_INIT OR CMAKE_USE_WIN32_THREADS_INIT))
   set(LIBVNCSERVER_EXAMPLES
     ${LIBVNCSERVER_EXAMPLES}
     blooptest
   )
-endif(CMAKE_USE_PTHREADS_INIT)
+endif(WITH_THREADS AND (CMAKE_USE_PTHREADS_INIT OR CMAKE_USE_WIN32_THREADS_INIT))
 
-if(WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
+if(WITH_THREADS AND WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
   set(LIBVNCSERVER_EXAMPLES
     ${LIBVNCSERVER_EXAMPLES}
     filetransfer
   )
-endif(WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
+endif(WITH_THREADS AND WITH_TIGHTVNC_FILETRANSFER AND CMAKE_USE_PTHREADS_INIT)
 
-if(MACOS)
+if(APPLE AND NOT IOS)
   set(LIBVNCSERVER_EXAMPLES
     ${LIBVNCSERVER_EXAMPLES}
     mac
   )
-endif(MACOS)
+  find_library(CARBON_LIBRARY Carbon)
+  find_library(IOKIT_LIBRARY IOKit)
+endif(APPLE AND NOT IOS)
 
 if(ANDROID)
   set(LIBVNCSERVER_EXAMPLES
@@ -573,7 +602,7 @@ foreach(e ${LIBVNCSERVER_EXAMPLES})
   add_executable(examples_${e} ${LIBVNCSRVEXAMPLE_DIR}/${e}.c)
   set_target_properties(examples_${e} PROPERTIES OUTPUT_NAME ${e})
   set_target_properties(examples_${e} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/examples)
-  target_link_libraries(examples_${e} vncserver ${CMAKE_THREAD_LIBS_INIT})
+  target_link_libraries(examples_${e} vncserver ${CMAKE_THREAD_LIBS_INIT} ${CARBON_LIBRARY} ${IOKIT_LIBRARY})
 endforeach(e ${LIBVNCSERVER_EXAMPLES})
 
 foreach(e ${LIBVNCCLIENT_EXAMPLES})
@@ -597,12 +626,12 @@ set(SIMPLETESTS
    copyrecttest
 )
 
-if(CMAKE_USE_PTHREADS_INIT)
+if(WITH_THREADS AND (CMAKE_USE_PTHREADS_INIT OR CMAKE_USE_WIN32_THREADS_INIT))
   set(SIMPLETESTS
       ${SIMPLETESTS}
       encodingstest
      )
-endif(CMAKE_USE_PTHREADS_INIT)
+endif(WITH_THREADS AND (CMAKE_USE_PTHREADS_INIT OR CMAKE_USE_WIN32_THREADS_INIT))
 
 foreach(t ${SIMPLETESTS})
   add_executable(test_${t} ${TESTS_DIR}/${t}.c)

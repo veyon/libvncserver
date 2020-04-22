@@ -5,7 +5,7 @@
 LibVNCServer: A library for easy implementation of a VNC server.
 Copyright (C) 2001-2003 Johannes E. Schindelin
 
-If you already used LibVNCServer, you probably want to read [NEWS](NEWS).
+If you already used LibVNCServer, you probably want to read [NEWS](NEWS.md).
 
 What is it?
 ===========
@@ -55,38 +55,8 @@ client examples](./client_examples).
 Projects using it
 =================
 
-VNC for KDE
-http://www.tjansen.de/krfb
-
-GemsVNC
-http://www.elilabs.com/~rj/gemsvnc/
-
-VNC for Netware
-http://forge.novell.com/modules/xfmod/project/?vncnw
-
-RDesktop
-http://rdesktop.sourceforge.net
-
-VNCpp
-https://github.com/ocrespo/VNCpp
-
-VirtualBox
-https://www.virtualbox.org/
-
-Veyon
-https://veyon.io
-
-AQEMU
-http://aqemu.sourceforge.net/
-
-Remmina
-https://remmina.org/
-
-GNOME Remote Desktop
-https://wiki.gnome.org/Projects/Mutter/RemoteDesktop
-
-
-Mail us if your application is missing!
+The [homepage has a tentative list](https://libvnc.github.io/#projects-using) of
+all the projects using either LibVNCServer or LibVNCClient or both.
 
 How to build
 ============
@@ -361,7 +331,8 @@ from the [webclients](webclients) directory via `../examples/example`. It's
 important to _not_ start from within the `examples` directory as otherwise the
 server program won't find its HTTP index file. The server program will tell you
 a URL to point your web browser to. There, you can click on the noVNC-Button to
-connect using the bundled noVNC viewer.
+connect using the noVNC viewer git submodule (installable via
+`git submodule update --init`).
 
 ### Using Secure Websockets
 
@@ -389,57 +360,7 @@ The server program will tell you a URL to point your web browser to. There,
 you can click on the noVNC-encrypted-connection-button to connect using the
 bundled noVNC viewer using an encrypted Websockets connection.
 
-History
-=======
 
-LibVNCServer is based on Tridia VNC and OSXvnc, which in turn are based on
-the original code from ORL/AT&T.
-
-When I began hacking with computers, my first interest was speed. So, when I
-got around assembler, I programmed the floppy to do much of the work, because
-its clock rate was higher than that of my C64. This was my first experience
-with client/server techniques.
-
-When I came around Xwindows (much later), I was at once intrigued by the
-elegance of such connectedness between the different computers. I used it
-a lot - not the least priority lay on games. However, when I tried it over
-modem from home, it was no longer that much fun.
-
-When I started working with ASP (Application Service Provider) programs, I
-tumbled across Tarantella and Citrix. Being a security fanatic, the idea of
-running a server on windows didn't appeal to me, so Citrix went down the
-basket. However, Tarantella has its own problems (security as well as the
-high price). But at the same time somebody told me about this "great little
-administrator's tool" named VNC. Being used to windows programs' sizes, the
-surprise was reciprocal inverse to the size of VNC!
-
-At the same time, the program "rdesktop" (a native Linux client for the
-Terminal Services of Windows servers) came to my attention. There where even
-works under way to make a protocol converter "rdp2vnc" out of this. However,
-my primary goal was a slow connection and rdp2vnc could only speak RRE
-encoding, which is not that funny with just 5kB/s. Tim Edmonds, the original
-author of rdp2vnc, suggested that I adapt it to Hextile Encoding, which is
-better. I first tried that, but had no success at all (crunchy pictures).
-
-Also, I liked the idea of an HTTP server included and possibly other
-encodings like the Tight Encodings from Const Kaplinsky. So I started looking
-for libraries implementing a VNC server where I could steal what I can't make.
-I found some programs based on the demo server from AT&T, which was also the
-basis for rdp2vnc (can only speak Raw and RRE encoding). There were some
-rumors that GGI has a VNC backend, but I didn't find any code, so probably
-there wasn't a working version anyway.
-
-All of a sudden, everything changed: I read on freshmeat that "OSXvnc" was
-released. I looked at the code and it was not much of a problem to work out
-a simple server - using every functionality there is in Xvnc. It became clear
-to me that I *had* to build a library out of it, so everybody can use it.
-Every change, every new feature can propagate to every user of it.
-
-It also makes everything easier:
- You don't care about the cursor, once set (or use the standard cursor).
-You don't care about those sockets. You don't care about encodings.
-You just change your frame buffer and inform the library about it. Every once
-in a while you call rfbProcessEvents and that's it.
 
 Basics
 ======
@@ -462,66 +383,6 @@ works.
 There is the possibility to set a password, which is also negotiated by the
 RFB protocol, but IT IS NOT SECURE. Anybody sniffing your net can get the
 password. You really should tunnel through SSH.
-
-Windows or: why do you do that to me?
-=====================================
-
-If you love products from Redmod, you better skip this paragraph.
-I am always amazed how people react whenever Microsoft(tm) puts in some
-features into their products which were around for a long time. Especially
-reporters seem to not know dick about what they are reporting about! But
-what is every time annoying again, is that they don't do it right. Every
-concept has its new name (remember what enumerators used to be until
-Mickeysoft(tm) claimed that enumerators are what we thought were iterators.
-Yeah right, enumerators are also containers. They are not separated. Muddy.)
-
-There are three packages you want to get hold of: zlib, jpeg and pthreads.
-The latter is not strictly necessary, but when you put something like this
-into your source:
-
-```
-#define MUTEX(s)
-	struct {
-		int something;
-		MUTEX(latex);
-	}
-```
-
-Microsoft's C++ compiler doesn't do it. It complains that this is an error.
-This, however, is how I implemented mutexes in case you don't need pthreads,
-and so don't need the mutex.
-
-You can find the packages at
-http://www.gimp.org/win32/extralibs-dev-20001007.zip
-
-Thanks go to all the GIMP team!
-
-What are those other targets in the Makefile?
-=============================================
-
-OSXvnc-server is the original OSXvnc adapted to use the library, which was in
-turn adapted from OSXvnc. As you easily can see, the OSX dependend part is
-minimal.
-
-storepasswd is the original program to save a vnc style password in a file.
-Unfortunately, authentication as every vncviewer speaks it means the server
-has to know the plain password. You really should tunnel via ssh or use
-your own PasswordCheck to build a PIN/TAN system.
-
-sratest is a test unit. Run it to assert correct behaviour of sraRegion. I
-wrote this to test my iterator implementation.
-
-blooptest is a test of pthreads. It is just the example, but with a background
-loop to hunt down thread lockups.
-
-pnmshow24 is like pnmshow, but it uses 3 bytes/pixel internally, which is not
-as efficient as 4 bytes/pixel for translation, because there is no native data
-type of that size, so you have to memcpy pixels and be real cautious with
-endianness. Anyway, it works.
-
-fontsel is a test for rfbSelectBox and rfbLoadConsoleFont. If you have Linux
-console fonts, you can browse them via VNC. Directory browsing not implemented
-yet :-(
 
 Commercial Use
 ==============

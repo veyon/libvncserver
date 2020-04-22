@@ -271,6 +271,8 @@ rfbClient* rfbGetClient(int bitsPerSample,int samplesPerPixel,
   client->destHost = NULL;
   client->destPort = 5900;
   
+  client->connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+
   client->CurrentKeyboardLedState = 0;
   client->HandleKeyboardLedState = (HandleKeyboardLedStateProc)DummyPoint;
 
@@ -470,7 +472,7 @@ rfbBool rfbInitClient(rfbClient* client,int* argc,char** argv) {
 	}
         j+=2;
       } else {
-	char* colon=strchr(argv[i],':');
+	char* colon=strrchr(argv[i],':');
 
 	if(client->serverHost)
 	  free(client->serverHost);

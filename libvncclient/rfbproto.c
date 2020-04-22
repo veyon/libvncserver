@@ -65,9 +65,7 @@
 #endif
 #include "tls.h"
 
-#ifdef _MSC_VER
-#  define snprintf _snprintf /* MSVC went straight to the underscored syntax */
-#endif
+#define MAX_TEXTCHAT_SIZE 10485760 /* 10MB */
 
 /*
  * rfbClientLog prints a time-stamped message to the log file (stderr).
@@ -324,12 +322,12 @@ ConnectToRFBServer(rfbClient* client,const char *hostname, int port)
 #ifndef WIN32
   if(IsUnixSocket(hostname))
     /* serverHost is a UNIX socket. */
-    client->sock = ConnectClientToUnixSock(hostname);
+    client->sock = ConnectClientToUnixSockWithTimeout(hostname, client->connectTimeout);
   else
 #endif
   {
 #ifdef LIBVNCSERVER_IPv6
-    client->sock = ConnectClientToTcpAddr6(hostname, port);
+    client->sock = ConnectClientToTcpAddr6WithTimeout(hostname, port, client->connectTimeout);
 #else
     unsigned int host;
 
@@ -338,7 +336,7 @@ ConnectToRFBServer(rfbClient* client,const char *hostname, int port)
       rfbClientLog("Couldn't convert '%s' to host address\n", hostname);
       return FALSE;
     }
-    client->sock = ConnectClientToTcpAddr(host, port);
+    client->sock = ConnectClientToTcpAddrWithTimeout(host, port, client->connectTimeout);
 #endif
   }
 
@@ -350,7 +348,7 @@ ConnectToRFBServer(rfbClient* client,const char *hostname, int port)
   if(client->QoS_DSCP && !SetDSCP(client->sock, client->QoS_DSCP))
      return FALSE;
 
-  return SetNonBlocking(client->sock);
+  return TRUE;
 }
 
 /*
@@ -364,7 +362,7 @@ rfbBool ConnectToRFBRepeater(rfbClient* client,const char *repeaterHost, int rep
   char tmphost[250];
 
 #ifdef LIBVNCSERVER_IPv6
-  client->sock = ConnectClientToTcpAddr6(repeaterHost, repeaterPort);
+  client->sock = ConnectClientToTcpAddr6WithTimeout(repeaterHost, repeaterPort, client->connectTimeout);
 #else
   unsigned int host;
   if (!StringToIPAddr(repeaterHost, &host)) {
@@ -372,16 +370,13 @@ rfbBool ConnectToRFBRepeater(rfbClient* client,const char *repeaterHost, int rep
     return FALSE;
   }
 
-  client->sock = ConnectClientToTcpAddr(host, repeaterPort);
+  client->sock = ConnectClientToTcpAddrWithTimeout(host, repeaterPort, client->connectTimeout);
 #endif
 
   if (client->sock == RFB_INVALID_SOCKET) {
     rfbClientLog("Unable to connect to VNC repeater\n");
     return FALSE;
   }
-
-  if (!SetNonBlocking(client->sock))
-    return FALSE;
 
   if (!ReadFromRFBServer(client, pv, sz_rfbProtocolVersionMsg))
     return FALSE;
@@ -2165,6 +2160,8 @@ HandleRFBServerMessage(rfbClient* client)
               client->HandleTextChat(client, (int)rfbTextChatFinished, NULL);
           break;
       default:
+	  if(msg.tc.length > MAX_TEXTCHAT_SIZE)
+	      return FALSE;
           buffer=malloc(msg.tc.length+1);
           if (!ReadFromRFBServer(client, buffer, msg.tc.length))
           {
