@@ -12,45 +12,13 @@ What is it?
 
 [VNC](https://en.wikipedia.org/wiki/Virtual_Network_Computing) is a set of programs
 using the [RFB (Remote Frame Buffer)](https://github.com/rfbproto/rfbproto/blob/master/rfbproto.rst)
-protocol. They are designed to "export" a frame buffer via net (if you don't know VNC, I
-suggest you read "Basics" below). It is already in wide use for
-administration, but it is not that easy to program a server yourself.
+protocol. They are designed to "export" a frame buffer via net: you set up a server and can
+connect to it via VNC viewers. If the server supports WebSockets (which LibVNCServer does), 
+you can also connect using an in-browser VNC viewer like [noVNC](https://novnc.com). 
+
+It is already in wide use for administration, but it is not that easy to program a server yourself.
 
 This has been changed by LibVNCServer.
-
-There are several examples included, both for [servers](./examples) and 
-[clients](./client_examples).
-
-These examples are not too well documented, but easy straight forward and a
-good starting point.
-
-Try 'example', a shared scribble sheet: it outputs on which port it listens (default: 5900), so it is
-display 0. To view, call
-	`vncviewer :0`
-You should see a sheet with a gradient and "Hello World!" written on it. Try
-to paint something. Note that every time you click, there is some bigger blot,
-whereas when you drag the mouse while clicked you draw a line. The size of the
-blot depends on the mouse button you click. Open a second vncviewer with
-the same parameters and watch it as you paint in the other window. This also
-works over internet. You just have to know either the name or the IP of your
-machine. Then it is
-	`vncviewer machine.where.example.runs.com:0`
-or similar for the remote client. Now you are ready to type something. Be sure
-that your mouse sits still, because every time the mouse moves, the cursor is
-reset to the position of the pointer! If you are done with that demo, press
-the down or up arrows. If your viewer supports it, then the dimensions of the
-sheet change. Just press Escape in the viewer. Note that the server still
-runs, even if you closed both windows. When you reconnect now, everything you
-painted and wrote is still there. You can press "Page Up" for a blank page.
-
-The demo 'pnmshow' is much simpler: you either provide a filename as argument
-or pipe a file through stdin. Note that the file has to be a raw pnm/ppm file,
-i.e. a truecolour graphics. Only the Escape key is implemented. This may be
-the best starting point if you want to learn how to use LibVNCServer. You
-are confronted with the fact that the bytes per pixel can only be 8, 16 or 32.
-
-If you want to build a VNC client instead, please have a look at the [various
-client examples](./client_examples).
 
 Projects using it
 =================
@@ -117,211 +85,13 @@ win32, the `-dev` packages coming with your distribution won't work.
 How to use
 ==========
 
-To make a server, you just have to initialise a server structure using the
-function rfbDefaultScreenInit, like
+See the [LibVNCServer API intro documentation](https://libvnc.github.io/doc/html/libvncserver_doc.html)
+for how to create a server instance, wire up input handlers and handle cursors.
 
-	rfbScreenInfoPtr rfbScreen = rfbGetScreen(argc,argv,width,height,8,3,bpp);
+In case you prefer to learn LibVNCServer by example, have a look at the servers in the
+[examples](examples) directory. 
 
-where byte per pixel should be 1, 2 or 4. If performance doesn't matter,
-you may try bpp=3 (internally one cannot use native data types in this
-case; if you want to use this, look at pnmshow24).
-
-
-You then can set hooks and io functions (see below) or other
-options (see below).
-
-And you allocate the frame buffer like this:
-
-	rfbScreen->frameBuffer = (char*)malloc(width*height*bpp);
-
-After that, you initialize the server, like
-
-	rfbInitServer(rfbScreen);
-
-You can use a blocking event loop, a background (pthread based) event loop,
-or implement your own using the rfbProcessEvents function.
-
-Making it interactive
----------------------
-
-Input is handled by IO functions (see below).
-
-Whenever you change something in the frame buffer, call rfbMarkRectAsModified.
-
-Utility functions
------------------
-
-Whenever you draw something, you have to call
-
-	rfbMarkRectAsModified(screen,x1,y1,x2,y2).
-
-This tells LibVNCServer to send updates to all connected clients.
-
-Before you draw something, be sure to call
-
-	rfbUndrawCursor(screen).
-
-This tells LibVNCServer to hide the cursor.
-Remark: There are vncviewers out there, which know a cursor encoding, so
-that network traffic is low, and also the cursor doesn't need to be
-drawn the cursor every time an update is sent. LibVNCServer handles
-all the details. Just set the cursor and don't bother any more.
-
-To set the mouse coordinates (or emulate mouse clicks), call
-
-	rfbDefaultPtrAddEvent(buttonMask,x,y,cl);
-
-IMPORTANT: do this at the end of your function, because this actually draws
-the cursor if no cursor encoding is active.
-
-What is the difference between rfbScreenInfoPtr and rfbClientPtr?
------------------------------------------------------------------
-
-The rfbScreenInfoPtr is a pointer to a rfbScreenInfo structure, which
-holds information about the server, like pixel format, io functions,
-frame buffer etc.
-
-The rfbClientPtr is a pointer to an rfbClientRec structure, which holds
-information about a client, like pixel format, socket of the
-connection, etc.
-
-A server can have several clients, but needn't have any. So, if you
-have a server and three clients are connected, you have one instance
-of a rfbScreenInfo and three instances of rfbClientRec's.
-
-The rfbClientRec structure holds a member
-
-	rfbScreenInfoPtr screen
-
-which points to the server and a member
-
-	rfbClientPtr next
-
-to the next client.
-
-The rfbScreenInfo structure holds a member
-
-	rfbClientPtr rfbClientHead
-
-which points to the first client.
-
-So, to access the server from the client structure, you use client->screen.
-To access all clients from a server, get screen->rfbClientHead and
-iterate using client->next.
-
-If you change client settings, be sure to use the provided iterator
-
-	rfbGetClientIterator(rfbScreen)
-
-with
-
-	rfbClientIteratorNext(iterator)
-
-and
-	
-	rfbReleaseClientIterator
-
-to prevent thread clashes.
-
-Other options
--------------
-
-These options have to be set between rfbGetScreen and rfbInitServer.
-
-If you already have a socket to talk to, just set rfbScreen->inetdSock
-(originally this is for inetd handling, but why not use it for your purpose?).
-
-To also start an HTTP server (running on port 5800+display_number), you have
-to set rfbScreen->httpdDir to a directory containing vncviewer.jar and
-index.vnc (like the included "webclients" directory).
-
-Hooks and IO functions
-----------------------
-
-There exist the following IO functions as members of rfbScreen:
-kbdAddEvent, kbdReleaseAllKeys, ptrAddEvent and setXCutText
-
-	kbdAddEvent(rfbBool down,rfbKeySym key,rfbClientPtr cl)
-
-is called when a key is pressed.
-
-	kbdReleaseAllKeys(rfbClientPtr cl)
-
-is not called at all (maybe in the future).
-
-	ptrAddEvent(int buttonMask,int x,int y,rfbClientPtr cl)
-
-is called when the mouse moves or a button is pressed.
- WARNING: if you want to have proper cursor handling, call
-
-	rfbDefaultPtrAddEvent(buttonMask,x,y,cl)
-
-in your own function. This sets the coordinates of the cursor.
-
-	setXCutText(char* str,int len,rfbClientPtr cl)
-
-is called when the selection changes.
-
-There are only two hooks:
-
-	newClientHook(rfbClientPtr cl)
-
-is called when a new client has connected.
-
-	displayHook
-
-is called just before a frame buffer update is sent.
-
-You can also override the following methods:
-
-	getCursorPtr(rfbClientPtr cl)
-
-This could be used to make an animated cursor (if you really want ...)
-
-	setTranslateFunction(rfbClientPtr cl)
-
-If you insist on colour maps or something more obscure, you have to
-implement this. Default is a trueColour mapping.
-
-Cursor handling
----------------
-
-The screen holds a pointer
-
-	rfbCursorPtr cursor
-
-to the current cursor. Whenever you set it, remember that any dynamically
-created cursor (like return value from rfbMakeXCursor) is not free'd!
-
-The rfbCursor structure consists mainly of a mask and a source. The mask
-describes, which pixels are drawn for the cursor (a cursor needn't be
-rectangular). The source describes, which colour those pixels should have.
-
-The standard is an XCursor: a cursor with a foreground and a background
-colour (stored in `backRed`,`backGreen`,`backBlue` and the same for foreground
-in a range from 0-0xffff). Therefore, the arrays `mask` and `source`
-contain pixels as single bits stored in bytes in MSB order. The rows are
-padded, such that each row begins with a new byte (i.e. a 10x4
-cursor's mask has 2x4 bytes, because 2 bytes are needed to hold 10 bits).
-
-It is however very easy to make a cursor like this:
-
-	char* cur="    "
-              " xx "
-	          " x  "
-	          "    ";
-	char* mask="xxxx"
-               "xxxx"
-	           "xxxx"
-	           "xxx ";
-    rfbCursorPtr c=rfbMakeXCursor(4,4,cur,mask);
-
-You can even set `mask` to NULL in this call and LibVNCServer will calculate
-a mask for you (dynamically, so you have to free it yourself).
-
-There is also an array named `richSource` for colourful cursors. They have
-the same format as the frameBuffer (i.e. if the server is 32 bit,
-a 10x4 cursor has 4x10x4 bytes).
+For LibVNCClient, examples can be found in [client_examples](client_examples).
 
 Using Websockets
 ----------------
@@ -359,30 +129,6 @@ key and cert:
 The server program will tell you a URL to point your web browser to. There,
 you can click on the noVNC-encrypted-connection-button to connect using the
 bundled noVNC viewer using an encrypted Websockets connection.
-
-
-
-Basics
-======
-
-VNC (Virtual network computing) works like this: You set up a server and can
-connect to it via vncviewers. The communication uses a protocol named RFB
-(Remote Frame Buffer). If the server supports WebSockets (which LibVNCServer does), 
-you can also connect using an in-browser VNC viewer like [noVNC](https://novnc.com). 
-
-There exist several encodings for VNC, which are used to compress the regions
-which have changed before they are sent to the client. A client need not be
-able to understand every encoding, but at least Raw encoding. Which encoding
-it understands is negotiated by the RFB protocol.
-
-If you want to know how RFB works, please take the time and read the [protocol
-specification](https://github.com/rfbproto/rfbproto/blob/master/rfbproto.rst),
-it is very well written and contains a lot of prose that really explains how stuff
-works.
-
-There is the possibility to set a password, which is also negotiated by the
-RFB protocol, but IT IS NOT SECURE. Anybody sniffing your net can get the
-password. You really should tunnel through SSH.
 
 Commercial Use
 ==============
@@ -430,11 +176,11 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.dfdf
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 Contact
 =======
 
 * To file an issue, go to https://github.com/LibVNC/libvncserver/issues
-* For non-public contact mail dontmind at sdf dot org
+* For non-public contact please see [SECURITY.md](SECURITY.md).
 
