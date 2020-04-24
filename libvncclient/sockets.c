@@ -374,9 +374,7 @@ ConnectClientToTcpAddrWithTimeout(unsigned int host, int port, unsigned int time
 #ifdef WIN32
     errno=WSAGetLastError();
 #endif
-#if 0
     rfbClientErr("ConnectToTcpAddr: socket (%s)\n",strerror(errno));
-#endif
     return RFB_INVALID_SOCKET;
   }
 
@@ -465,9 +463,7 @@ ConnectClientToTcpAddr6WithTimeout(const char *hostname, int port, unsigned int 
 
   if (sock == RFB_INVALID_SOCKET)
   {
-#if 0
     rfbClientErr("ConnectClientToTcpAddr6: connect\n");
-#endif
     return RFB_INVALID_SOCKET;
   }
 
