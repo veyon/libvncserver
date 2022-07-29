@@ -473,9 +473,6 @@ typedef struct _rfbClient {
 	MUTEX(tlsRwMutex);
 
 	rfbBool requestedResize;
-        /**
-         * Used for intended dimensions, rfbClient.width and rfbClient.height are used to manage the real framebuffer dimensions.
-	 */
 	rfbExtDesktopScreen screen;
 } rfbClient;
 
