@@ -492,7 +492,7 @@ typedef struct _rfbClientRec {
          * using LibVNCServer to provide services: */
 
         RFB_INITIALISATION_SHARED, /**< sending initialisation messages with implicit shared-flag already true */
-        RFB_SHUTDOWN            /**< shutting down */
+        RFB_SHUTDOWN            /**< Client is shutting down */
     } state;
 
     rfbBool reverseConnection;
@@ -905,8 +905,6 @@ extern rfbBool rfbSendRectEncodingZlib(rfbClientPtr cl, int x, int y, int w,
 #define TIGHT_DEFAULT_COMPRESSION  6
 #define TURBO_DEFAULT_SUBSAMP 0
 
-extern rfbBool rfbTightDisableGradient;
-
 extern int rfbNumCodedRectsTight(rfbClientPtr cl, int x,int y,int w,int h);
 
 extern rfbBool rfbSendRectEncodingTight(rfbClientPtr cl, int x,int y,int w,int h);
@@ -1136,6 +1134,7 @@ rfbBool rfbUpdateClient(rfbClientPtr cl);
 
 /**
  @page libvncserver_doc LibVNCServer Documentation
+ @tableofcontents
  @section create_server Creating a server instance
  To make a server, you just have to initialise a server structure using the
  function rfbGetScreen(), like

@@ -625,13 +625,15 @@ listenerRun(void *data)
     fd_set listen_fds;  /* temp file descriptor list for select() */
 
     /*
-       Only checking socket state here and not using rfbIsActive()
-       because: When rfbShutdownServer() is called by the client, it runs in
-       the client-to-server thread's context, resulting in itself calling
-       its own the pthread_join(), returning immediately, leaving the
-       client-to-server thread to actually terminate _after_ the listener thread
-       is terminated, leaving the client list still populated.
-     */
+      Only checking socket state here and not using rfbIsActive()
+      because: When rfbShutdownServer() is called by the client, it runs in
+      the client-to-server thread's context, resulting in itself calling
+      its own the pthread_join(), returning immediately, leaving the
+      client-to-server thread to actually terminate _after_ the listener thread
+      is terminated, leaving the client list still populated, making rfbIsActive()
+      return true, not ending the listener, making the join in rfbShutdownServer()
+      wait forever...
+    */
     /* TODO: HTTP is not handled */
     while (screen->socketState != RFB_SOCKET_SHUTDOWN) {
         client_fd = -1;
@@ -1070,6 +1072,16 @@ void rfbNewFramebuffer(rfbScreenInfoPtr screen, char *framebuffer,
   rfbClientIteratorPtr iterator;
   rfbClientPtr cl;
 
+  /* Lock out client reads. */
+  iterator = rfbGetClientIterator(screen);
+  while ((cl = rfbClientIteratorNext(iterator))) {
+      LOCK(cl->sendMutex);
+  }
+  rfbReleaseClientIterator(iterator);
+
+  /* Prevent cursor drawing into framebuffer */
+  LOCK(screen->cursorMutex);
+
   /* Update information in the screenInfo structure */
 
   old_format = screen->serverFormat;
@@ -1122,8 +1134,14 @@ void rfbNewFramebuffer(rfbScreenInfoPtr screen, char *framebuffer,
 
     TSIGNAL(cl->updateCond);
     UNLOCK(cl->updateMutex);
+
+    /* Swapping frame buffers finished, re-enable client reads. */
+    UNLOCK(cl->sendMutex);
   }
   rfbReleaseClientIterator(iterator);
+
+  /* Re-enable cursor drawing into framebuffer */
+  UNLOCK(screen->cursorMutex);
 }
 
 /* hang up on all clients and free all reserved memory */
@@ -1185,14 +1203,20 @@ void rfbShutdownServer(rfbScreenInfoPtr screen,rfbBool disconnectClients) {
         rfbCloseClient(currentCl);
       }
 
+#ifdef LIBVNCSERVER_HAVE_LIBPTHREAD
+    if(currentCl->screen->backgroundLoop) {
+      /* Wait for threads to finish. The thread has already been pipe-notified by rfbCloseClient() */
+      pthread_join(currentCl->client_thread, NULL);
+    } else {
       /*
-	 In threaded mode, rfbClientConnectionGone() is called by the client-to-server thread.
-	 Only need to call this here for non-threaded mode.
-       */
-#if defined(LIBVNCSERVER_HAVE_LIBPTHREAD) || defined(LIBVNCSERVER_HAVE_WIN32THREADS)
-    if(!currentCl->screen->backgroundLoop)
+	In threaded mode, rfbClientConnectionGone() is called by the client-to-server thread.
+	Only need to call this here for non-threaded mode.
+      */
+      rfbClientConnectionGone(currentCl);
+    }
+#else
+      rfbClientConnectionGone(currentCl);
 #endif
-	rfbClientConnectionGone(currentCl);
 
       currentCl = nextCl;
     }
@@ -1204,7 +1228,6 @@ void rfbShutdownServer(rfbScreenInfoPtr screen,rfbBool disconnectClients) {
   rfbShutdownSockets(screen);
 
 #ifdef LIBVNCSERVER_HAVE_LIBPTHREAD
-  screen->socketState = RFB_SOCKET_SHUTDOWN; /* Set this so the listener thread ends */
   if (screen->backgroundLoop) {
       /*
 	Notify the listener thread. This simply writes a NULL byte to the notify pipe in order to get past the select()

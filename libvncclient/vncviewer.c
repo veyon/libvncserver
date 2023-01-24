@@ -39,6 +39,9 @@
 #include <time.h>
 #include <rfb/rfbclient.h>
 #include "tls.h"
+#if defined(LIBVNCSERVER_HAVE_LIBZ) && defined(LIBVNCSERVER_HAVE_LIBJPEG)
+#include "turbojpeg.h"
+#endif
 
 static void Dummy(rfbClient* client) {
 }
@@ -520,6 +523,13 @@ void rfbClientCleanup(rfbClient* client) {
 	client->decompStream.msg != NULL)
       rfbClientLog("inflateEnd: %s\n", client->decompStream.msg );
   }
+
+#ifdef LIBVNCSERVER_HAVE_LIBJPEG
+  if(client->tjhnd){
+    tjDestroy(client->tjhnd);
+    client->tjhnd = NULL;
+  }
+#endif /* LIBVNCSERVER_HAVE_LIBJPEG */
 #endif
 
   if (client->ultra_buffer)
@@ -536,7 +546,8 @@ void rfbClientCleanup(rfbClient* client) {
     client->clientData = next;
   }
 
-  free(client->vncRec);
+  if(client->vncRec)
+	  free(client->vncRec);
 
   if (client->sock != RFB_INVALID_SOCKET)
     rfbCloseSocket(client->sock);
@@ -548,10 +559,16 @@ void rfbClientCleanup(rfbClient* client) {
     free(client->destHost);
   if (client->clientAuthSchemes)
     free(client->clientAuthSchemes);
+  if(client->rcSource)
+    free(client->rcSource);
+  if(client->rcMask)
+    free(client->rcMask);
 
 #ifdef LIBVNCSERVER_HAVE_SASL
   if (client->saslSecret)
     free(client->saslSecret);
+  if (client->saslconn)
+    sasl_dispose(&client->saslconn);
 #endif /* LIBVNCSERVER_HAVE_SASL */
 
 #ifdef WIN32
