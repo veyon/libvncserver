@@ -884,11 +884,6 @@ int WaitForMessage(rfbClient* client,unsigned int usecs)
     /* playing back vncrec file */
     return 1;
 
-  /* Check if we have buffered data available */
-  if (client->buffered > 0) {
-    return 1;
-  }
-
 #ifdef LIBVNCSERVER_HAVE_POLL
   pfd.fd = client->sock;
   pfd.events = POLLIN | POLLPRI;
