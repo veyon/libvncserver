@@ -116,7 +116,7 @@ endif(WITH_PNG)
 
 
 if(WITH_SDL)
-  find_package(SDL2)
+  find_package(SDL3 CONFIG)
 endif(WITH_SDL)
 
 if(WITH_GTK)
@@ -618,13 +618,13 @@ set(LIBVNCCLIENT_EXAMPLES
     ppmtest
 )
 
-if(SDL2_FOUND)
-  include_directories(${SDL2_INCLUDE_DIR})
+if(SDL3_FOUND)
+  set(SDL3_LIBRARIES SDL3::SDL3)
   set(LIBVNCCLIENT_EXAMPLES
     ${LIBVNCCLIENT_EXAMPLES}
     SDLvncviewer
   )
-endif(SDL2_FOUND)
+endif(SDL3_FOUND)
 
 if(GTK2_FOUND)
   include_directories(${GTK2_INCLUDE_DIRS})
@@ -666,7 +666,7 @@ if(WITH_EXAMPLES)
       add_executable(client_examples_${e} ${LIBVNCCLIEXAMPLE_DIR}/${e}.c ${LIBVNCCLIEXAMPLE_DIR}/${${e}_EXTRA_SOURCES} )
       set_target_properties(client_examples_${e} PROPERTIES OUTPUT_NAME ${e})
       set_target_properties(client_examples_${e} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/examples/client)
-      target_link_libraries(client_examples_${e} vncclient ${CMAKE_THREAD_LIBS_INIT} ${SDL2_LIBRARY} ${GTK2_LIBRARIES} ${FFMPEG_LIBRARIES} ${LIBSSHTUNNEL_LIBRARY})
+      target_link_libraries(client_examples_${e} vncclient ${CMAKE_THREAD_LIBS_INIT} ${SDL3_LIBRARIES} ${GTK2_LIBRARIES} ${FFMPEG_LIBRARIES} ${LIBSSHTUNNEL_LIBRARY})
     endforeach(e ${LIBVNCCLIENT_EXAMPLES})
   endif(WITH_LIBVNCCLIENT)
 
